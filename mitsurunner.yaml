@@ -1,0 +1,215 @@
+# ESPhomen alustus. 
+# Tässä annetaan laitteelle nimi, asetetaan omaa mikrokontrolleria vastaavat tiedot  
+# Lisäksi tässä alustetaan perusasetukset, kuten ajastus pakkosulatukselle ja pakotetaan sulatusrele pois päältä
+esphome:
+  name: mitsurunner  
+#kaksi seuraavaa riviä pitää säätää jokaisen oman rautansa mukaiseksi
+  platform: esp8266
+  board: nodemcuv2
+  on_boot: # Laitteen bootatessa varmista, että sulatus ei käynnisty päälle kytkemällä se pois päältä ja käynnistä ajastus pakkosulatukselle
+  - switch.turn_off: gpio_rele
+  - script.execute: ajasta_pakkosulatus
+  - script.execute: kaynnista_minimi_aika
+  
+# Globaalit muuttujat, joilla estetään esim. alle minimiajan tapahtuvat sulatukset.
+globals:
+  - id: G_minimiaika_kulunut
+    type: bool
+    restore_value: false
+    initial_value: 'false'
+  - id: G_ylityksen_minimiaika_kulunut
+    type: bool
+    restore_value: false
+    initial_value: 'false'  
+
+# Tässä osastossa sinun pitää määrittää laitteelle oman wifi verkkosi tiedot
+# laite yhdistyy wifiin ja yrittää ottaa yhteyttä määrittämääsi MQTT brokeriin, jonne se lähettää logit yms tiedot
+wifi:
+#päivitä wifi verkkosi tiedot tähän " " merkkien väliin, juuri kuten näet ne esimerkiksi kännykältä
+  ssid: "xxxxx"
+  password: "xxxxxx"
+# päätä manuaalinen IP osoite, OTA toimii paremmin: tässä yksi esimerkki, mikä se voisi olla. 
+# nämä numerot riippuvat wifi verkostasi.
+  manual_ip:
+    static_ip: 192.168.1.xxx
+    subnet: 255.255.255.xxx
+    gateway: 192.168.1.xxx
+
+# Wifin yli tehtävä firmispäivytys
+# aseta oma salasanasi, jotteivat hakkerit pääse päivittelemään sinulle mitään ylimääräistä softaa
+ota:
+  password: "password"
+
+# logit päälle, jotta saadaan PC:lle tieto, mitä laite tekee. Esim. pääseekö wifiin, mitä lämpöjä mittaa yms
+logger:
+
+
+# mqtt:tä eli tietokoneelle lämpötilojavarten tarvitset konffata verkossasi olevan mqtt brokerin
+# jos et käytä mqtt:tä poista kaikki mitä alla on
+# broker: riville tulee IP osoite mqtt brokerillesi, esim 192.168.1.123
+mqtt:
+  broker: 192.168.1.xxx 
+  id: mqtt_client
+#kirjoita brokerillasi tunnistettava username alapuoliseen riviin : merkin jälkeen (yksi välilyönti ennen käyttäjänimeä)
+  username: "username"
+#kirjoita brokerisi käyttäjän salasana alapuoliseen riviin : merkin jälkeen (yksi välilyönti ennen käyttäjänimeä)
+  password: "password"
+#mqtt viestin alkuosa, muuta tämä haluamaksesi tai pidä tällaisena
+  topic_prefix: mzl_ln35/lampotilat
+
+
+# dallas DS28B20 dataväylä kytketään pinniin D2. Voit vaihtaa tähän pinnin numeron, johon sinulla data tulee.
+# laite tulee mittaamaan lämmön 10s välein. Se lienee riittävä tarkkuus tässä. 
+dallas:
+  - pin: D2
+    update_interval: 10s
+    id: dallas1
+
+
+# Lämpötilasensorit, eli nuo dallasit. Sinun pitää tunnistaa ensin fläsäämällä dallasisi osoite. 
+# tee kytkentä ja anna laitteen tunnistaa dallasit. Tarkista logeista, mitkä osoitteet sinne tulostuu. 
+# lämmitä kädellä toista sensoria ja merkitse se. elä sekoita enää sensoreita tämän jälkeen
+# valitse, kummasta tulee kennon lämpöä mittaava sensori ja kummasta ulkolämpötä mittaava
+# heitin nyt tarkkuudeksi kaksi desimaalia. On ainakin tarkka...
+sensor:
+  - platform: dallas
+    address: 0xDB0416848F29FF28 # tämä on sinulla eri aina ja jokaiselle sensorille uniikki. Näet tämän logeista kun kommentoit tämän rivin pois
+    name: "kennonlampotila"
+    id: kennonlampo
+    accuracy_decimals: 1
+    filters:    
+      - filter_out: nan
+#    state_topic: pub/xxx/xxx/xxx/lampotila #Jos käytät IOTGurua tarvitset tähän katsoa mittaukselle avaimesi
+  - platform: dallas
+    address: 0x0604168489ADFF28 # tämä on sinulla eri aina ja jokaiselle sensorille uniikki. Näet tämän logeista kun kommentoit tämän rivin pois
+    name: "ulkolampotila"
+    id: ulkolampo
+    accuracy_decimals: 1
+    filters:
+      - filter_out: nan
+#    state_topic: pub/xxx/xxx/xxx/lampotila #Jos käytät IOTGurua tarvitset tähän katsoa mittaukselle avaimesi
+          
+          
+# sulatuksen triggaus logiikka alkaa tästä
+# nyt logiikka tekee tätä tarkistusta 10s välein. tämä aika voidaan säätää pidemmäksi, tuskin näin usein tarvitsee tarkistella
+  - platform: template
+    id: sulatuspaalle
+    name: "Kytketaanko sulatus paalle"
+    update_interval: 30s
+# tässä tarkistetaan lämpötilojen ero, blokki C++ koodia tuon lambda rivin jälkeen. 
+# tähän pitäisi ehkä lisätä tarkistus, että ollaan pakkasella. Mutta en lisännyt koska testaan sisällä.
+# viisi astetta hardkoodattu --> pitää muuttaa muuttujaksi, jota voi säätää
+# vois lisäksi seurata liukuvaa keskiarvoa, tai esim: kolme viimeistä ollut alle "triggerilämmön"
+    lambda: !lambda |-
+        float lampotilaero = (id(ulkolampo).state - id(kennonlampo).state);
+        bool resetoi_lampotilaeron_minimiaika = false;
+        
+        // JOS riittävän iso ero ja riittävän kauan aikaa kulunut edellisestä sulatuksesta
+        if ( lampotilaero >= 5 && id(G_minimiaika_kulunut) == true) { 
+            // JOS ylityskin ollut riittävän kauan aikaa
+            if ( id(G_ylityksen_minimiaika_kulunut) == true ) {
+                // sulatellaan
+                id(tee_sulatus).execute();
+                resetoi_lampotilaeron_minimiaika = true;
+                }
+            // JOS ylityksen minimiaikatimer on käynnisä, odotellaan vain... Eli tyhjä blokki
+            else if ( id(kaynnista_lampotileron_minimi_aika).is_running() ) {
+                }
+            // Ei ylityksen minimiaikaa käynnissä. Käynnistä se, koska  muut ehdot täyttyvät lämmitykselle. 
+            else  
+                { 
+                id(kaynnista_lampotileron_minimi_aika).execute();
+                }
+            }            
+        else {        
+            // Pidetään huoli, että jos lämpötilaero laskee alle säädetyn rajan, ylityksen minimiajan ajastin nollataan.
+            resetoi_lampotilaeron_minimiaika = true;       
+            }
+        
+        if ( resetoi_lampotilaeron_minimiaika ) {
+            id(G_ylityksen_minimiaika_kulunut) = false;
+            
+            // pysäytä timerkin, jos päällä
+            if ( id(kaynnista_lampotileron_minimi_aika).is_running() ) {
+                id(kaynnista_lampotileron_minimi_aika).stop();  
+                id(mqtt_client).publish("mzl_ln35/lampotilat/sensor/onko_ylityksen_minimiaika_kulunut/state", to_string(0.0));
+                }
+            }
+            
+        return lampotilaero;
+
+    
+# Releen/transistorin ohjauspinnin ohjaus GPIO pinnin kautta.
+# Pinnissä virta = päällä = jännite -- Sulatushuijaus päällä
+# Pinnissä ei virtaa = pois päältä = 0v -- sulatushuijausvastus pois päältä.
+# D1 pinniin oikeasti rele. Nyt testataan vain ledillä, joka toimii D0 portin kautta toiminto, ennen releeseen kytkemistä.
+switch:
+  - platform: gpio
+#    pin: D5
+    pin:
+      number: D0
+      inverted: true
+    name: "Sulatushuijauksen ohjaus"
+    id: gpio_rele
+
+# sulatus scripti
+# Tällä scriptillä hoidetaan sulatus releen ohjaus kytkemään vastuksen pois turn_on ja turn_off välisen ajan
+# scriptiä voidaan kutsua vaikka sulatus on meneillään, eli se ei aiheuta "päällekäisiä sulatuksia" jotka pidentävät ajastimen aikaa joka kerta 
+# scripti hoitaa releen ohjauksen sulatusasentoon scriptissä määritety ajan ajaksi
+# --> AJASTIN PITÄÄ SÄÄTÄÄ SOPIVAKSI
+script:
+  - id: tee_sulatus
+    mode: single #suoritetaan vain, jos ei ole jo sulatusta meneillään. Tämä tulostaa logiin varoituksen vain.
+    then:    
+    - switch.turn_on: gpio_rele    
+    - script.execute: kaynnista_minimi_aika
+    - lambda: !lambda |-
+        id(mqtt_client).publish("mzl_ln35/lampotilat/sensor/sulatushuijaus/state", to_string(1.0));
+    - delay: 3min    
+    - switch.turn_off: gpio_rele
+    - lambda: !lambda |-
+        id(mqtt_client).publish("mzl_ln35/lampotilat/sensor/sulatushuijaus/state", to_string(0.0));
+    - script.execute: ajasta_pakkosulatus
+    - script.execute: kaynnista_minimi_aika
+
+
+
+#Minimiajan toteutus scripti:
+#estää minimiajan aikana tapahtuvan sulatuksen. Eli määrittää lyhyimmän mahdollisen lämmitysjakson.
+#nyt ajastettu 50min, joka minulla on joskus vetänyt jo kennon ihan tukkoon
+  - id: kaynnista_minimi_aika
+    mode: single #suoritetaan vain, jos ei ole jo sulatusta meneillään. Tämä tulostaa logiin varoituksen vain.
+    then:  
+    - lambda: !lambda |-
+        id(G_minimiaika_kulunut) = false;
+        id(mqtt_client).publish("mzl_ln35/lampotilat/sensor/onko_minimiaika_kulunut/state", to_string(0.0));
+    - delay: 30min #aseta tähän haluamasi lyhyin lämmitysaika. Minulla 50min. Tämä aika lasketaan sulatuksen alusta! Eli sisältää sulatuksen.
+    - lambda: !lambda |-
+        id(G_minimiaika_kulunut) = true; 
+        id(mqtt_client).publish("mzl_ln35/lampotilat/sensor/onko_minimiaika_kulunut/state", to_string(1.0));
+        
+#Lämpöyilaeron ylityksen Minimiajan toteutus scripti:
+#estää lyhyiden lämpötilaerojen aiheuttamat sulatuksen triggerit
+  - id: kaynnista_lampotileron_minimi_aika
+    mode: single #suoritetaan vain, jos ei ole jo sulatusta meneillään. Tämä tulostaa logiin varoituksen vain.
+    then:  
+    - lambda: !lambda |-
+        id(G_ylityksen_minimiaika_kulunut) = false;
+        id(mqtt_client).publish("mzl_ln35/lampotilat/sensor/onko_ylityksen_minimiaika_kulunut/state", to_string(0.0));
+    - delay: 5min #minimi aika, jonka lämpötilaero oltava yli rajan, jotta sulatus saa alkaa
+    - lambda: !lambda |-
+        id(G_ylityksen_minimiaika_kulunut) = true; 
+        id(mqtt_client).publish("mzl_ln35/lampotilat/sensor/onko_ylityksen_minimiaika_kulunut/state", to_string(1.0));
+
+    
+# pakkosulatukselle scripti
+# tämä scripti hoitaa pakkosulatuksen ajastukset. 
+# tätä kutsutuaan siis kun laite käynnistyy --> pakkosulatus allaolevan ajan kuluttua, jos sitä ennen ei sulateta ja täten nollata ajastinta alkamaan alusta tai
+# tätä kutsutaan jokaisen sulatuksen päätteeksi --> pakkosulatuksen ajastus nollautuu jokaisen sulatuksen päätteeksi ja pakkosulatusaikaa aletaan mittaamaan taas alusta
+# näin pakkosulatus tulee aina vakioajan päähän edellisestä sulatuksesta tai tämän ohjauslaitteen käynnistämisestä. 
+# Pakkosulatuksen ajastus vakiona mitsussa 150min = 2h 30min. Tätä voi säätää oman mielensä mukaan, mikäli uskaltaa ajaa kauemmin pumppua. 
+  - id: ajasta_pakkosulatus
+    mode: restart #kutsuttaessa scripti uudelleenkäynnistetään.              
+    then:
+    - delay: 150min #pakkosulatusten väli 150min tähän, jos haluaa noudattaa mitsubishin väliä
+    - script.execute: tee_sulatus
