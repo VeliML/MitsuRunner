@@ -1,4 +1,4 @@
-# mitsurunner
+# Mitsurunner
 Software for ESP8266 or ESP32 based device designed to prevent Mitsubishi heatpumps to do too short heating runs and melting ice too often from outdoor unit's heat exhanger.
 
 This software started form topic in lampopumput.info site: https://lampopumput.info/foorumi/threads/msz-ln-sulatushuijaus.31223/ 
