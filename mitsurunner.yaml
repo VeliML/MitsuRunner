@@ -4,10 +4,10 @@
 esphome:
   name: mitsurunner  
 #kaksi seuraavaa riviä pitää säätää jokaisen oman rautansa mukaiseksi
-  platform: esp8266
+  platform: d1_mini
   board: nodemcuv2
   on_boot: # Laitteen bootatessa varmista, että sulatus ei käynnisty päälle kytkemällä se pois päältä ja käynnistä ajastus pakkosulatukselle
-  - switch.turn_off: gpio_rele
+  - switch.turn_on: gpio_rele
   - script.execute: ajasta_pakkosulatus
   - script.execute: kaynnista_minimi_aika
   
@@ -61,7 +61,7 @@ mqtt:
 # dallas DS28B20 dataväylä kytketään pinniin D2. Voit vaihtaa tähän pinnin numeron, johon sinulla data tulee.
 # laite tulee mittaamaan lämmön 10s välein. Se lienee riittävä tarkkuus tässä. 
 dallas:
-  - pin: D2
+  - pin: GPIO14
     update_interval: 10s
     id: dallas1
 
@@ -132,8 +132,8 @@ sensor:
             // pysäytä timerkin, jos päällä
             if ( id(kaynnista_lampotileron_minimi_aika).is_running() ) {
                 id(kaynnista_lampotileron_minimi_aika).stop();  
-                id(mqtt_client).publish("mzl_ln35/lampotilat/sensor/onko_ylityksen_minimiaika_kulunut/state", to_string(0.0));
                 }
+            id(mqtt_client).publish("mzl_ln35/lampotilat/sensor/onko_ylityksen_minimiaika_kulunut/state", to_string(0.0));
             }
             
         return lampotilaero;
@@ -145,10 +145,7 @@ sensor:
 # D1 pinniin oikeasti rele. Nyt testataan vain ledillä, joka toimii D0 portin kautta toiminto, ennen releeseen kytkemistä.
 switch:
   - platform: gpio
-#    pin: D5
-    pin:
-      number: D0
-      inverted: true
+    pin: D1
     name: "Sulatushuijauksen ohjaus"
     id: gpio_rele
 
@@ -161,16 +158,15 @@ script:
   - id: tee_sulatus
     mode: single #suoritetaan vain, jos ei ole jo sulatusta meneillään. Tämä tulostaa logiin varoituksen vain.
     then:    
-    - switch.turn_on: gpio_rele    
+    - switch.turn_off: gpio_rele    
     - script.execute: kaynnista_minimi_aika
-    - lambda: !lambda |-
-        id(mqtt_client).publish("mzl_ln35/lampotilat/sensor/sulatushuijaus/state", to_string(1.0));
-    - delay: 3min    
-    - switch.turn_off: gpio_rele
+    - script.execute: ajasta_pakkosulatus
     - lambda: !lambda |-
         id(mqtt_client).publish("mzl_ln35/lampotilat/sensor/sulatushuijaus/state", to_string(0.0));
-    - script.execute: ajasta_pakkosulatus
-    - script.execute: kaynnista_minimi_aika
+    - delay: 3min    
+    - switch.turn_on: gpio_rele
+    - lambda: !lambda |-
+        id(mqtt_client).publish("mzl_ln35/lampotilat/sensor/sulatushuijaus/state", to_string(1.0));
 
 
 
