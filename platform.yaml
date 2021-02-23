@@ -1,0 +1,67 @@
+# ESPhomen alustus. 
+# Tässä annetaan laitteelle nimi, asetetaan omaa mikrokontrolleria vastaavat tiedot  
+# Lisäksi tässä alustetaan perusasetukset, kuten ajastus pakkosulatukselle ja pakotetaan sulatusrele pois päältä
+esphome:
+  name: mitsurunner  
+#kaksi seuraavaa riviä pitää säätää jokaisen oman rautansa mukaiseksi
+  platform: esp8266
+  board: d1_mini_lite
+  on_boot: # Laitteen bootatessa varmista, että sulatus ei käynnisty päälle kytkemällä se pois päältä ja käynnistä ajastus pakkosulatukselle
+  - switch.turn_on: gpio_rele
+  - script.execute: ajasta_pakkosulatus
+  - script.execute: kaynnista_minimi_aika
+  
+# Globaalit muuttujat, joilla estetään esim. alle minimiajan tapahtuvat sulatukset.
+globals:
+  - id: G_minimiaika_kulunut
+    type: bool
+    restore_value: 'false'
+    initial_value: 'false'
+  - id: G_ylityksen_minimiaika_kulunut
+    type: bool
+    restore_value: 'false'
+    initial_value: 'false'
+
+# Tässä osastossa sinun pitää määrittää laitteelle oman wifi verkkosi tiedot
+# laite yhdistyy wifiin ja yrittää ottaa yhteyttä määrittämääsi MQTT brokeriin, jonne se lähettää logit yms tiedot
+wifi:
+#päivitä wifi verkkosi tiedot tähän " " merkkien väliin, juuri kuten näet ne esimerkiksi kännykältä
+  ssid: "your_ssid"
+  password: "your_password"
+# päätä manuaalinen IP osoite, OTA toimii paremmin: tässä yksi esimerkki, mikä se voisi olla. 
+# nämä numerot riippuvat wifi verkostasi.
+  manual_ip:
+    static_ip: 192.168.1.x
+    subnet: 255.255.255.0
+    gateway: 192.168.1.1
+
+# Wifin yli tehtävä firmispäivytys
+# aseta oma salasanasi, jotteivat hakkerit pääse päivittelemään sinulle mitään ylimääräistä softaa
+ota:
+  password: "your_ota_password"
+  
+# mqtt:tä eli tietokoneelle lämpötilojavarten tarvitset konffata verkossasi olevan mqtt brokerin
+# jos et käytä mqtt:tä poista kaikki mitä alla on
+# broker: riville tulee IP osoite mqtt brokerillesi, esim 192.168.1.123
+mqtt:
+  broker: 195.201.219.208
+  id: mqtt_client
+  username: user_short_identifier
+  client_id: device_short identifier
+  password: device_key
+
+# logit päälle, jotta saadaan PC:lle tieto, mitä laite tekee. Esim. pääseekö wifiin, mitä lämpöjä mittaa yms
+logger:
+
+substitutions:
+# dallasien osoitteet:
+  dallas_address_kenno: '0x653C01D607697928'
+  dallas_address_ulko:  '0x93000802B67D1E10'
+  dallas_address_ulko2: '0xCC02189245841C28'
+  topic_kenno:          'pub/xxx/xxx/xxx/lampotila' #Jos käytät IOTGurua tarvitset tähän katsoa mittaukselle avaimesi
+  topic_ulko:           'pub/xxx/xxx/xxx/lampotila' #Jos käytät IOTGurua tarvitset tähän katsoa mittaukselle avaimesi
+  topic_ulko2:          'pub/xxx/xxx/xxx/lampotila' #Jos käytät IOTGurua tarvitset tähän katsoa mittaukselle avaimesi
+# IO-pinnit:
+  dallas_pinni:         'D7'
+  rele_pinni:           'D1'
+  
