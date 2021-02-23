@@ -13,9 +13,7 @@ dallas:
 # D1 pinniin oikeasti rele. Nyt testataan vain ledillä, joka toimii D0 portin kautta toiminto, ennen releeseen kytkemistä.
 switch:
   - platform: gpio
-    pin:
-      number: $rele_pinni
-      inverted: false
+    pin: $rele_pinni
     name: "Sulatushuijauksen ohjaus"
     id: gpio_rele
 
@@ -39,14 +37,6 @@ sensor:
     id: ulkolampo
     accuracy_decimals: 1
     state_topic: $topic_ulko
-    filters:
-      - filter_out: nan
-  - platform: dallas
-    address: $dallas_address_ulko2
-    name: "testilampotila"
-    id: testilampo
-    accuracy_decimals: 1
-    state_topic: $topic_ulko2
     filters:
       - filter_out: nan
 
