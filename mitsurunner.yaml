@@ -131,7 +131,7 @@ script:
     then:  
     - lambda: !lambda |-
         id(G_ylityksen_minimiaika_kulunut) = false;
-        id(mqtt_client).publish("mzl_ln35/lampotilat/sensor/onko_ylityksen_minimiaika_kulunut/state", to_string(0.0));
+        id(mqtt_client).publish("mzl_ln35/lampotilat/sensor/onko_ylityksen_minimiaika_kulunut/state", to_string(0.5));
     - delay: 5min #minimi aika, jonka lämpötilaero oltava yli rajan, jotta sulatus saa alkaa
     - lambda: !lambda |-
         id(G_ylityksen_minimiaika_kulunut) = true; 
