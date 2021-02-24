@@ -1,70 +1,21 @@
-# ESPhomen alustus. 
-# Tässä annetaan laitteelle nimi, asetetaan omaa mikrokontrolleria vastaavat tiedot  
-# Lisäksi tässä alustetaan perusasetukset, kuten ajastus pakkosulatukselle ja pakotetaan sulatusrele pois päältä
-esphome:
-  name: mitsurunner  
-#kaksi seuraavaa riviä pitää säätää jokaisen oman rautansa mukaiseksi
-  platform: d1_mini
-  board: nodemcuv2
-  on_boot: # Laitteen bootatessa varmista, että sulatus ei käynnisty päälle kytkemällä se pois päältä ja käynnistä ajastus pakkosulatukselle
-  - switch.turn_on: gpio_rele
-  - script.execute: ajasta_pakkosulatus
-  - script.execute: kaynnista_minimi_aika
-  
-# Globaalit muuttujat, joilla estetään esim. alle minimiajan tapahtuvat sulatukset.
-globals:
-  - id: G_minimiaika_kulunut
-    type: bool
-    restore_value: false
-    initial_value: 'false'
-  - id: G_ylityksen_minimiaika_kulunut
-    type: bool
-    restore_value: false
-    initial_value: 'false'  
-
-# Tässä osastossa sinun pitää määrittää laitteelle oman wifi verkkosi tiedot
-# laite yhdistyy wifiin ja yrittää ottaa yhteyttä määrittämääsi MQTT brokeriin, jonne se lähettää logit yms tiedot
-wifi:
-#päivitä wifi verkkosi tiedot tähän " " merkkien väliin, juuri kuten näet ne esimerkiksi kännykältä
-  ssid: "xxxxx"
-  password: "xxxxxx"
-# päätä manuaalinen IP osoite, OTA toimii paremmin: tässä yksi esimerkki, mikä se voisi olla. 
-# nämä numerot riippuvat wifi verkostasi.
-  manual_ip:
-    static_ip: 192.168.1.xxx
-    subnet: 255.255.255.xxx
-    gateway: 192.168.1.xxx
-
-# Wifin yli tehtävä firmispäivytys
-# aseta oma salasanasi, jotteivat hakkerit pääse päivittelemään sinulle mitään ylimääräistä softaa
-ota:
-  password: "password"
-
-# logit päälle, jotta saadaan PC:lle tieto, mitä laite tekee. Esim. pääseekö wifiin, mitä lämpöjä mittaa yms
-logger:
-
-
-# mqtt:tä eli tietokoneelle lämpötilojavarten tarvitset konffata verkossasi olevan mqtt brokerin
-# jos et käytä mqtt:tä poista kaikki mitä alla on
-# broker: riville tulee IP osoite mqtt brokerillesi, esim 192.168.1.123
-mqtt:
-  broker: 192.168.1.xxx 
-  id: mqtt_client
-#kirjoita brokerillasi tunnistettava username alapuoliseen riviin : merkin jälkeen (yksi välilyönti ennen käyttäjänimeä)
-  username: "username"
-#kirjoita brokerisi käyttäjän salasana alapuoliseen riviin : merkin jälkeen (yksi välilyönti ennen käyttäjänimeä)
-  password: "password"
-#mqtt viestin alkuosa, muuta tämä haluamaksesi tai pidä tällaisena
-  topic_prefix: mzl_ln35/lampotilat
-
+<<: !include platform.yaml
 
 # dallas DS28B20 dataväylä kytketään pinniin D2. Voit vaihtaa tähän pinnin numeron, johon sinulla data tulee.
 # laite tulee mittaamaan lämmön 10s välein. Se lienee riittävä tarkkuus tässä. 
 dallas:
-  - pin: GPIO14
+  - pin: $dallas_pinni
     update_interval: 10s
     id: dallas1
 
+# Releen/transistorin ohjauspinnin ohjaus GPIO pinnin kautta.
+# Pinnissä virta = päällä = jännite -- Sulatushuijaus päällä
+# Pinnissä ei virtaa = pois päältä = 0v -- sulatushuijausvastus pois päältä.
+# D1 pinniin oikeasti rele. Nyt testataan vain ledillä, joka toimii D0 portin kautta toiminto, ennen releeseen kytkemistä.
+switch:
+  - platform: gpio
+    pin: $rele_pinni
+    name: "Sulatushuijauksen ohjaus"
+    id: gpio_rele
 
 # Lämpötilasensorit, eli nuo dallasit. Sinun pitää tunnistaa ensin fläsäämällä dallasisi osoite. 
 # tee kytkentä ja anna laitteen tunnistaa dallasit. Tarkista logeista, mitkä osoitteet sinne tulostuu. 
@@ -73,23 +24,22 @@ dallas:
 # heitin nyt tarkkuudeksi kaksi desimaalia. On ainakin tarkka...
 sensor:
   - platform: dallas
-    address: 0xDB0416848F29FF28 # tämä on sinulla eri aina ja jokaiselle sensorille uniikki. Näet tämän logeista kun kommentoit tämän rivin pois
+    address: $dallas_address_kenno # tämä on sinulla eri aina ja jokaiselle sensorille uniikki. Näet tämän logeista kun kommentoit tämän rivin pois
     name: "kennonlampotila"
     id: kennonlampo
     accuracy_decimals: 1
+    state_topic: $topic_kenno
     filters:    
       - filter_out: nan
-#    state_topic: pub/xxx/xxx/xxx/lampotila #Jos käytät IOTGurua tarvitset tähän katsoa mittaukselle avaimesi
   - platform: dallas
-    address: 0x0604168489ADFF28 # tämä on sinulla eri aina ja jokaiselle sensorille uniikki. Näet tämän logeista kun kommentoit tämän rivin pois
+    address: $dallas_address_ulko
     name: "ulkolampotila"
     id: ulkolampo
     accuracy_decimals: 1
+    state_topic: $topic_ulko
     filters:
       - filter_out: nan
-#    state_topic: pub/xxx/xxx/xxx/lampotila #Jos käytät IOTGurua tarvitset tähän katsoa mittaukselle avaimesi
-          
-          
+
 # sulatuksen triggaus logiikka alkaa tästä
 # nyt logiikka tekee tätä tarkistusta 10s välein. tämä aika voidaan säätää pidemmäksi, tuskin näin usein tarvitsee tarkistella
   - platform: template
@@ -103,7 +53,7 @@ sensor:
     lambda: !lambda |-
         float lampotilaero = (id(ulkolampo).state - id(kennonlampo).state);
         bool resetoi_lampotilaeron_minimiaika = false;
-        
+
         // JOS riittävän iso ero ja riittävän kauan aikaa kulunut edellisestä sulatuksesta
         if ( lampotilaero >= 5 && id(G_minimiaika_kulunut) == true) { 
             // JOS ylityskin ollut riittävän kauan aikaa
@@ -138,16 +88,6 @@ sensor:
             
         return lampotilaero;
 
-    
-# Releen/transistorin ohjauspinnin ohjaus GPIO pinnin kautta.
-# Pinnissä virta = päällä = jännite -- Sulatushuijaus päällä
-# Pinnissä ei virtaa = pois päältä = 0v -- sulatushuijausvastus pois päältä.
-# D1 pinniin oikeasti rele. Nyt testataan vain ledillä, joka toimii D0 portin kautta toiminto, ennen releeseen kytkemistä.
-switch:
-  - platform: gpio
-    pin: D1
-    name: "Sulatushuijauksen ohjaus"
-    id: gpio_rele
 
 # sulatus scripti
 # Tällä scriptillä hoidetaan sulatus releen ohjaus kytkemään vastuksen pois turn_on ja turn_off välisen ajan
@@ -163,7 +103,7 @@ script:
     - script.execute: ajasta_pakkosulatus
     - lambda: !lambda |-
         id(mqtt_client).publish("mzl_ln35/lampotilat/sensor/sulatushuijaus/state", to_string(0.0));
-    - delay: 3min    
+    - delay: 30min    
     - switch.turn_on: gpio_rele
     - lambda: !lambda |-
         id(mqtt_client).publish("mzl_ln35/lampotilat/sensor/sulatushuijaus/state", to_string(1.0));
@@ -179,7 +119,7 @@ script:
     - lambda: !lambda |-
         id(G_minimiaika_kulunut) = false;
         id(mqtt_client).publish("mzl_ln35/lampotilat/sensor/onko_minimiaika_kulunut/state", to_string(0.0));
-    - delay: 30min #aseta tähän haluamasi lyhyin lämmitysaika. Minulla 50min. Tämä aika lasketaan sulatuksen alusta! Eli sisältää sulatuksen.
+    - delay: 50min #aseta tähän haluamasi lyhyin lämmitysaika. Minulla 50min. Tämä aika lasketaan sulatuksen alusta! Eli sisältää sulatuksen.
     - lambda: !lambda |-
         id(G_minimiaika_kulunut) = true; 
         id(mqtt_client).publish("mzl_ln35/lampotilat/sensor/onko_minimiaika_kulunut/state", to_string(1.0));
@@ -191,7 +131,7 @@ script:
     then:  
     - lambda: !lambda |-
         id(G_ylityksen_minimiaika_kulunut) = false;
-        id(mqtt_client).publish("mzl_ln35/lampotilat/sensor/onko_ylityksen_minimiaika_kulunut/state", to_string(0.5));
+        id(mqtt_client).publish("mzl_ln35/lampotilat/sensor/onko_ylityksen_minimiaika_kulunut/state", to_string(0.0));
     - delay: 5min #minimi aika, jonka lämpötilaero oltava yli rajan, jotta sulatus saa alkaa
     - lambda: !lambda |-
         id(G_ylityksen_minimiaika_kulunut) = true; 
