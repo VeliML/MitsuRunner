@@ -1,27 +1,3 @@
-# ESPhomen alustus. 
-# Tässä annetaan laitteelle nimi, asetetaan omaa mikrokontrolleria vastaavat tiedot  
-# Lisäksi tässä alustetaan perusasetukset, kuten ajastus pakkosulatukselle ja pakotetaan sulatusrele pois päältä
-esphome:
-  name: mitsurunner  
-#kaksi seuraavaa riviä pitää säätää jokaisen oman rautansa mukaiseksi
-  platform: esp8266
-  board: d1_mini_lite
-  on_boot: # Laitteen bootatessa varmista, että sulatus ei käynnisty päälle kytkemällä se pois päältä ja käynnistä ajastus pakkosulatukselle
-  - switch.turn_on: gpio_rele
-  - script.execute: ajasta_pakkosulatus
-  - script.execute: kaynnista_minimi_aika
-  
-# Globaalit muuttujat, joilla estetään esim. alle minimiajan tapahtuvat sulatukset.
-globals:
-  - id: G_minimiaika_kulunut
-    type: bool
-    restore_value: false
-    initial_value: 'false'
-  - id: G_ylityksen_minimiaika_kulunut
-    type: bool
-    restore_value: false
-    initial_value: 'false'
-
 # Tässä osastossa sinun pitää määrittää laitteelle oman wifi verkkosi tiedot
 # laite yhdistyy wifiin ja yrittää ottaa yhteyttä määrittämääsi MQTT brokeriin, jonne se lähettää logit yms tiedot
 wifi:
@@ -57,6 +33,9 @@ mqtt:
 logger:
 
 substitutions:
+#kaksi seuraavaa riviä pitää säätää jokaisen oman rautansa mukaiseksi
+  platform_type:        'esp8266'
+  board_type:           'd1_mini_lite'
 # dallasien osoitteet:
   dallas_address_kenno: '0x653C01D607697928'
   dallas_address_ulko:  '0x93000802B67D1E10'

@@ -1,5 +1,29 @@
 <<: !include platform.yaml
 
+# ESPhomen alustus. 
+# Tässä annetaan laitteelle nimi, asetetaan omaa mikrokontrolleria vastaavat tiedot
+# Lisäksi tässä alustetaan perusasetukset, kuten ajastus pakkosulatukselle ja pakotetaan sulatusrele pois päältä
+esphome:
+  name: mitsurunner
+#kaksi seuraavaa riviä pitää säätää jokaisen oman rautansa mukaiseksi
+  platform: $platform_type
+  board: $board_type
+  on_boot: # Laitteen bootatessa varmista, että sulatus ei käynnisty päälle kytkemällä se pois päältä ja käynnistä ajastus pakkosulatukselle
+  - switch.turn_on: gpio_rele
+  - script.execute: ajasta_pakkosulatus
+  - script.execute: kaynnista_minimi_aika
+
+# Globaalit muuttujat, joilla estetään esim. alle minimiajan tapahtuvat sulatukset.
+globals:
+  - id: G_minimiaika_kulunut
+    type: bool
+    restore_value: false
+    initial_value: 'false'
+  - id: G_ylityksen_minimiaika_kulunut
+    type: bool
+    restore_value: false
+    initial_value: 'false'
+
 # dallas DS28B20 dataväylä kytketään pinniin D2. Voit vaihtaa tähän pinnin numeron, johon sinulla data tulee.
 # laite tulee mittaamaan lämmön 10s välein. Se lienee riittävä tarkkuus tässä. 
 dallas:
