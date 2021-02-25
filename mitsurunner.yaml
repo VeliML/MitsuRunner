@@ -11,17 +11,19 @@ esphome:
   on_boot: # Laitteen bootatessa varmista, että sulatus ei käynnisty päälle kytkemällä se pois päältä ja käynnistä ajastus pakkosulatukselle
   - switch.turn_on: gpio_rele
   - script.execute: ajasta_pakkosulatus
-  - script.execute: kaynnista_minimi_aika
+#  - script.execute: kaynnista_minimi_aika
+  includes:
+    - constants.h
 
 # Globaalit muuttujat, joilla estetään esim. alle minimiajan tapahtuvat sulatukset.
 globals:
   - id: G_minimiaika_kulunut
     type: bool
-    restore_value: false
-    initial_value: 'false'
+    restore_value: yes
+    initial_value: 'true'
   - id: G_ylityksen_minimiaika_kulunut
     type: bool
-    restore_value: false
+    restore_value: no
     initial_value: 'false'
 
 # dallas DS28B20 dataväylä kytketään pinniin D2. Voit vaihtaa tähän pinnin numeron, johon sinulla data tulee.
@@ -64,6 +66,17 @@ sensor:
     filters:
       - filter_out: nan
 
+# Ylimääräinen anturi esimerkiksi ulkolämpötilan loggaamiselle kauempaa kennosta
+# Ei tarvita sulatushuijaukseen, voidaan kommentoida pois
+  # - platform: dallas
+  #   address: $dallas_address_test
+  #   name: "testilampo"
+  #   id: testilampo
+  #   accuracy_decimals: 1
+  #   state_topic: $topic_test
+  #   filters:
+  #     - filter_out: nan
+
 # sulatuksen triggaus logiikka alkaa tästä
 # nyt logiikka tekee tätä tarkistusta 10s välein. tämä aika voidaan säätää pidemmäksi, tuskin näin usein tarvitsee tarkistella
   - platform: template
@@ -79,9 +92,9 @@ sensor:
         bool resetoi_lampotilaeron_minimiaika = false;
 
         // JOS riittävän iso ero ja riittävän kauan aikaa kulunut edellisestä sulatuksesta
-        if ( lampotilaero >= 5 && id(G_minimiaika_kulunut) == true) { 
-            // JOS ylityskin ollut riittävän kauan aikaa
-            if ( id(G_ylityksen_minimiaika_kulunut) == true ) {
+        if ( lampotilaero >= TEMPERATURE_DELTA_TO_DEFROST && id(G_minimiaika_kulunut) == true) {
+            // JOS ylityskin ollut riittävän kauan aikaa tai ylitetään ylempi lämpötilaero
+            if ( id(G_ylityksen_minimiaika_kulunut) == true || lampotilaero >= TEMPERATURE_DELTA_TO_FORCE_DEFROST) {
                 // sulatellaan
                 id(tee_sulatus).execute();
                 resetoi_lampotilaeron_minimiaika = true;
@@ -109,7 +122,12 @@ sensor:
                 }
             id(mqtt_client).publish("mzl_ln35/lampotilat/sensor/onko_ylityksen_minimiaika_kulunut/state", to_string(0.0));
             }
-            
+
+        // Jos haluat logata lämpötilaeroa, lisää defineen polku constants.h -tiedostoon
+        #ifdef TOPIC_TEMP_DELTA
+        id(mqtt_client).publish(TOPIC_TEMP_DELTA, to_string(lampotilaero));
+        #endif
+
         return lampotilaero;
 
 
