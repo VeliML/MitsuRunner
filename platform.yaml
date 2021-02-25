@@ -35,7 +35,7 @@ logger:
 substitutions:
 #kaksi seuraavaa riviä pitää säätää jokaisen oman rautansa mukaiseksi
   platform_type:        'esp8266'
-  board_type:           'd1_mini_lite'
+  board_type:           'd1_mini'
 # dallasien osoitteet:
   dallas_address_kenno: '0x653C01D607697928'
   dallas_address_ulko:  '0x93000802B67D1E10'
