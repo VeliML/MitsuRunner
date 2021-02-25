@@ -124,7 +124,7 @@ sensor:
             }
 
         // Jos haluat logata lämpötilaeroa, lisää defineen polku constants.h -tiedostoon
-        #ifdef TOPIC_TEMP_DELTA
+        #ifdef TOPIC_TEMP_DELTA_TRACES
         id(mqtt_client).publish(TOPIC_TEMP_DELTA, to_string(lampotilaero));
         #endif
 
