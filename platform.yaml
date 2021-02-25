@@ -1,55 +1,50 @@
-# Tässä osastossa sinun pitää määrittää laitteelle oman wifi verkkosi tiedot
-# laite yhdistyy wifiin ja yrittää ottaa yhteyttä määrittämääsi MQTT brokeriin, jonne se lähettää logit yms tiedot
+# Update your wifi details to section below
 wifi:
-#päivitä wifi verkkosi tiedot tähän " " merkkien väliin, juuri kuten näet ne esimerkiksi kännykältä
   ssid: "xxxxx"
   password: "xxxxxxxx"
-# päätä manuaalinen IP osoite, OTA toimii paremmin: tässä yksi esimerkki, mikä se voisi olla. 
-# nämä numerot riippuvat wifi verkostasi.
+# Set manual IP address so that wireless "OTA" update will work more reliably
+# Check these number from your wifi network
   manual_ip:
     static_ip: 192.168.1.100
     subnet: 255.255.255.0
     gateway: 192.168.1.0
 
-# Wifin yli tehtävä firmispäivytys
-# aseta oma salasanasi, jotteivat hakkerit pääse päivittelemään sinulle mitään ylimääräistä softaa
+# enalbes firmware updates over wifi 
+# set your unique password to prevent hackers to modify your device
 ota:
   password: "password"
   
-# mqtt:tä eli tietokoneelle lämpötilojavarten tarvitset konffata verkossasi olevan mqtt brokerin
-# jos et käytä mqtt:tä poista kaikki mitä alla on
-
-# IoT Gurun tapauksessa näihin tulee (katso itsellesi oikeat arvot IoT Gurusta):
+# MQTT broker configuration
+# In case of you are using IoT Guru (iotguru.io), uncomment and use data above. You have to check correct values from your IoT Guru web service
 # broker: 195.201.219.208
 # username: user short identifier
 # client_id: device short identifier
 # password: device key
+
 mqtt:
-# broker: riville tulee IP osoite mqtt brokerillesi, esim 192.168.1.123
   broker: 192.168.1.xxx 
   id: mqtt_client
-#kirjoita brokerillasi tunnistettava username alapuoliseen riviin : merkin jälkeen (yksi välilyönti ennen käyttäjänimeä)
-  username: vaihda_tämä
-#client_id tarvitaan ainakn IoT Guruun:
-  client_id: vaihda_tämä
-#kirjoita brokerisi käyttäjän salasana alapuoliseen riviin : merkin jälkeen (yksi välilyönti ennen käyttäjänimeä)
-  password: vaihda_tämä
-#mqtt viestin alkuosa, muuta tämä haluamaksesi tai pidä tällaisena
+  username: "change_this"
+  client_id: "change_this"
+  password: "change_this"
+#mqtt message prefix, change this to what you want
   topic_prefix: mzl_ln35/lampotilat
 
-# logit päälle, jotta saadaan PC:lle tieto, mitä laite tekee. Esim. pääseekö wifiin, mitä lämpöjä mittaa yms
+# enable logging to terminal - you can get log messages over wifi
 logger:
 
 substitutions:
-#kaksi seuraavaa riviä pitää säätää jokaisen oman rautansa mukaiseksi
+# define these values according to your hardware see: https://esphome.io/index.html
   platform_type:        'esp8266'
   board_type:           'd1_mini'
-# dallasien osoitteet:
-  dallas_address_kenno: '0x653C01D607697928'
-  dallas_address_ulko:  '0x93000802B67D1E10'
-  topic_kenno:          'pub/xxx/xxx/xxx/lampotila' #Jos käytät IOTGurua tarvitset tähän katsoa mittaukselle avaimesi
-  topic_ulko:           'pub/xxx/xxx/xxx/lampotila' #Jos käytät IOTGurua tarvitset tähän katsoa mittaukselle avaimesi
-# IO-pinnit:
-  dallas_pinni:         'D7' # 1-wire lämpötila-anturien pinni
-  rele_pinni:           'D1' # Releen/transistorin pinni
+
+# addresses for your dallas DS18B20 temperature sensors - you need to update these
+  dallas_address_heat_exhanger_temp: '0x653C01D607697928'
+  dallas_address_outdoor_temp:       '0x93000802B67D1E10'
+  
+  topic_heatexhanger:      'pub/xxx/xxx/xxx/lampotila' #if you will use IOT guru, please uncomment and update this to get graphs working
+  topic_outdoor:           'pub/xxx/xxx/xxx/lampotila' #if you will use IOT guru, please uncomment and update this to get graphs working
+# IO-pins:
+  dallas_pin:         'D2' # pin for DS18B20 1-wire temperature sensors
+  relay_pin:           'D0' # pin for controlling relay
   
