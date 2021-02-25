@@ -11,17 +11,19 @@ esphome:
   on_boot: # Laitteen bootatessa varmista, että sulatus ei käynnisty päälle kytkemällä se pois päältä ja käynnistä ajastus pakkosulatukselle
   - switch.turn_on: gpio_rele
   - script.execute: ajasta_pakkosulatus
-  - script.execute: kaynnista_minimi_aika
+#  - script.execute: kaynnista_minimi_aika
+  includes:
+    - constants.h
 
 # Globaalit muuttujat, joilla estetään esim. alle minimiajan tapahtuvat sulatukset.
 globals:
   - id: G_minimiaika_kulunut
     type: bool
-    restore_value: false
-    initial_value: 'false'
+    restore_value: no
+    initial_value: 'true'
   - id: G_ylityksen_minimiaika_kulunut
     type: bool
-    restore_value: false
+    restore_value: no
     initial_value: 'false'
 
 # dallas DS28B20 dataväylä kytketään pinniin D2. Voit vaihtaa tähän pinnin numeron, johon sinulla data tulee.
@@ -64,6 +66,17 @@ sensor:
     filters:
       - filter_out: nan
 
+# Ylimääräinen anturi esimerkiksi ulkolämpötilan loggaamiselle kauempaa kennosta
+# Ei tarvita sulatushuijaukseen, voidaan kommentoida pois
+  # - platform: dallas
+  #   address: $dallas_address_test
+  #   name: "testilampo"
+  #   id: testilampo
+  #   accuracy_decimals: 1
+  #   state_topic: $topic_test
+  #   filters:
+  #     - filter_out: nan
+
 # sulatuksen triggaus logiikka alkaa tästä
 # nyt logiikka tekee tätä tarkistusta 10s välein. tämä aika voidaan säätää pidemmäksi, tuskin näin usein tarvitsee tarkistella
   - platform: template
@@ -79,9 +92,9 @@ sensor:
         bool resetoi_lampotilaeron_minimiaika = false;
 
         // JOS riittävän iso ero ja riittävän kauan aikaa kulunut edellisestä sulatuksesta
-        if ( lampotilaero >= 5 && id(G_minimiaika_kulunut) == true) { 
-            // JOS ylityskin ollut riittävän kauan aikaa
-            if ( id(G_ylityksen_minimiaika_kulunut) == true ) {
+        if ( lampotilaero >= TEMPERATURE_DELTA_TO_DEFROST && id(G_minimiaika_kulunut) == true) {
+            // JOS ylityskin ollut riittävän kauan aikaa tai ylitetään ylempi lämpötilaero
+            if ( id(G_ylityksen_minimiaika_kulunut) == true || lampotilaero >= TEMPERATURE_DELTA_TO_FORCE_DEFROST) {
                 // sulatellaan
                 id(tee_sulatus).execute();
                 resetoi_lampotilaeron_minimiaika = true;
@@ -107,9 +120,14 @@ sensor:
             if ( id(kaynnista_lampotileron_minimi_aika).is_running() ) {
                 id(kaynnista_lampotileron_minimi_aika).stop();  
                 }
-            id(mqtt_client).publish("mzl_ln35/lampotilat/sensor/onko_ylityksen_minimiaika_kulunut/state", to_string(0.0));
+            id(mqtt_client).publish(TOPIC_IS_EXCESS_MIN_TIME_PASSED, to_string(0.0));
             }
-            
+
+        // Jos haluat logata lämpötilaeroa, lisää defineen polku constants.h -tiedostoon
+        #ifdef TOPIC_TEMP_DELTA
+        id(mqtt_client).publish(TOPIC_TEMP_DELTA, to_string(lampotilaero));
+        #endif
+
         return lampotilaero;
 
 
@@ -126,11 +144,11 @@ script:
     - script.execute: kaynnista_minimi_aika
     - script.execute: ajasta_pakkosulatus
     - lambda: !lambda |-
-        id(mqtt_client).publish("mzl_ln35/lampotilat/sensor/sulatushuijaus/state", to_string(0.0));
+        id(mqtt_client).publish(TOPIC_DEFROST_HACK_STATE, to_string(0.0));
     - delay: 30min    
     - switch.turn_on: gpio_rele
     - lambda: !lambda |-
-        id(mqtt_client).publish("mzl_ln35/lampotilat/sensor/sulatushuijaus/state", to_string(1.0));
+        id(mqtt_client).publish(TOPIC_DEFROST_HACK_STATE, to_string(1.0));
 
 
 
@@ -142,11 +160,11 @@ script:
     then:  
     - lambda: !lambda |-
         id(G_minimiaika_kulunut) = false;
-        id(mqtt_client).publish("mzl_ln35/lampotilat/sensor/onko_minimiaika_kulunut/state", to_string(0.0));
+        id(mqtt_client).publish(TOPIC_IS_HEATING_MIN_TIME_PASSED, to_string(0.0));
     - delay: 50min #aseta tähän haluamasi lyhyin lämmitysaika. Minulla 50min. Tämä aika lasketaan sulatuksen alusta! Eli sisältää sulatuksen.
     - lambda: !lambda |-
         id(G_minimiaika_kulunut) = true; 
-        id(mqtt_client).publish("mzl_ln35/lampotilat/sensor/onko_minimiaika_kulunut/state", to_string(1.0));
+        id(mqtt_client).publish(TOPIC_IS_HEATING_MIN_TIME_PASSED, to_string(1.0));
         
 #Lämpöyilaeron ylityksen Minimiajan toteutus scripti:
 #estää lyhyiden lämpötilaerojen aiheuttamat sulatuksen triggerit
@@ -155,11 +173,11 @@ script:
     then:  
     - lambda: !lambda |-
         id(G_ylityksen_minimiaika_kulunut) = false;
-        id(mqtt_client).publish("mzl_ln35/lampotilat/sensor/onko_ylityksen_minimiaika_kulunut/state", to_string(0.5));
+        id(mqtt_client).publish(TOPIC_IS_EXCESS_MIN_TIME_PASSED, to_string(0.5));
     - delay: 5min #minimi aika, jonka lämpötilaero oltava yli rajan, jotta sulatus saa alkaa
     - lambda: !lambda |-
         id(G_ylityksen_minimiaika_kulunut) = true; 
-        id(mqtt_client).publish("mzl_ln35/lampotilat/sensor/onko_ylityksen_minimiaika_kulunut/state", to_string(1.0));
+        id(mqtt_client).publish(TOPIC_IS_EXCESS_MIN_TIME_PASSED, to_string(1.0));
 
     
 # pakkosulatukselle scripti
