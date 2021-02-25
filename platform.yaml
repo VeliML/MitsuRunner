@@ -18,14 +18,22 @@ ota:
   
 # mqtt:tä eli tietokoneelle lämpötilojavarten tarvitset konffata verkossasi olevan mqtt brokerin
 # jos et käytä mqtt:tä poista kaikki mitä alla on
-# broker: riville tulee IP osoite mqtt brokerillesi, esim 192.168.1.123
+
+# IoT Gurun tapauksessa näihin tulee (katso itsellesi oikeat arvot IoT Gurusta):
+# broker: 195.201.219.208
+# username: user short identifier
+# client_id: device short identifier
+# password: device key
 mqtt:
+# broker: riville tulee IP osoite mqtt brokerillesi, esim 192.168.1.123
   broker: 192.168.1.xxx 
   id: mqtt_client
 #kirjoita brokerillasi tunnistettava username alapuoliseen riviin : merkin jälkeen (yksi välilyönti ennen käyttäjänimeä)
-  username: "username"
+  username: vaihda_tämä
+#client_id tarvitaan ainakn IoT Guruun:
+  client_id: vaihda_tämä
 #kirjoita brokerisi käyttäjän salasana alapuoliseen riviin : merkin jälkeen (yksi välilyönti ennen käyttäjänimeä)
-  password: "password"
+  password: vaihda_tämä
 #mqtt viestin alkuosa, muuta tämä haluamaksesi tai pidä tällaisena
   topic_prefix: mzl_ln35/lampotilat
 
