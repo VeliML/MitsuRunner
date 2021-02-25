@@ -19,7 +19,7 @@ esphome:
 globals:
   - id: G_minimiaika_kulunut
     type: bool
-    restore_value: yes
+    restore_value: no
     initial_value: 'true'
   - id: G_ylityksen_minimiaika_kulunut
     type: bool
