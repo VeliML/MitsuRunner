@@ -8,17 +8,17 @@ esphome:
   on_boot: 
   - switch.turn_on: gpio_relay
   - script.execute: schedule_forced_defrosting
-#  - script.execute: start_min_heting_time_timer
+#  - script.execute: start_min_heating_time_timer
   includes:
     - constants.h
 
-# global varialbes and their initial values
+# global variables and their initial values
 globals:
   - id: G_min_heating_time_passed #variable controlling minimum heating time after defrosting
     type: bool
     restore_value: no
     initial_value: 'true'
-  - id: G_excess_min_time_passed #variable preventing defrosting untill excess time has been passed
+  - id: G_excess_min_time_passed #variable preventing defrosting until excess time has been passed
     type: bool
     restore_value: no
     initial_value: 'false'
@@ -40,15 +40,15 @@ switch:
     id: gpio_relay
 
 # Dallas DS18B20 temperature sensor details. 
-# you need to check IDs of temperature sensors by starting this SW and checking those from logs printing to termina. 
+# you need to check IDs of temperature sensors by starting this SW and checking those from logs printing to terminal. 
 # After checked, copy IDs to platform.yaml file and heat another sensor. Check which sensor it were and use it for the appropriate topic
 sensor:
   - platform: dallas
-    address: $dallas_address_heat_exhanger_temp # Please remember to define this on platform.yaml
-    name: "outdoor unit heat exhanger temperature"
-    id: heat_exhanger_temp
+    address: $dallas_address_heat_exchanger_temp # Please remember to define this on platform.yaml
+    name: "outdoor unit heat exchanger temperature"
+    id: heat_exchanger_temp
     accuracy_decimals: 1
-    state_topic: $topic_heatexhanger
+    state_topic: $topic_heatexchanger
     filters:    
       - filter_out: nan
   - platform: dallas
@@ -78,7 +78,7 @@ sensor:
     update_interval: 30s
 # this C++ code checks if all requirements are fullfilled to trigger defrosting and triggers it then.
     lambda: !lambda |-
-        float temperature_delta = (id(outdoor_temp).state - id(heat_exhanger_temp).state);
+        float temperature_delta = (id(outdoor_temp).state - id(heat_exchanger_temp).state);
         bool reset_min_time_of_temperature_delta = false;
 
         // if temperature delta is over treshold and minimum heating time has passed
@@ -92,7 +92,7 @@ sensor:
             // if excess timer were not yet passed, do nothing
             else if ( id(start_excess_min_time_timer).is_running() ) {
                 }
-            // excess min itme were not on, but other defrosting requirements were fullfilled to start it
+            // excess min time were not on, but other defrosting requirements were fullfilled to start it
             else  
                 { 
                 id(start_excess_min_time_timer).execute();
@@ -114,7 +114,7 @@ sensor:
             }
 
         // if you want to get MQTT logs from temperature delta all the time, define TOPIC_TEMP_DELTA in constants.h file
-        #ifdef TOPIC_TEMP_DELTA_TRACES
+        #ifdef TOPIC_TEMP_DELTA_MESSAGES
         id(mqtt_client).publish(TOPIC_TEMP_DELTA, to_string(temperature_delta));
         #endif
 
@@ -127,7 +127,7 @@ script:
     mode: single #will be started only if there were no ongoing defrosting already
     then:    
     - switch.turn_off: gpio_relay    
-    - script.execute: start_min_heting_time_timer
+    - script.execute: start_min_heating_time_timer
     - script.execute: schedule_forced_defrosting
     - lambda: !lambda |-
         id(mqtt_client).publish(TOPIC_DEFROST_HACK_STATE, to_string(0.0));
@@ -140,7 +140,7 @@ script:
 
 # scipt implementing timer for minimum heating time
 # G_min_heating_time_passed is used through this timer to prevent defrosting too quickly after previous defrosting
-  - id: start_min_heting_time_timer
+  - id: start_min_heating_time_timer
     mode: single #will be started only if there were no ongoing defrosting already
     then:  
     - lambda: !lambda |-
@@ -171,3 +171,6 @@ script:
     then:
     - delay: 150min
     - script.execute: trigger_defrosting
+    
+
+
