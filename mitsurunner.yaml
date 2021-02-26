@@ -1,193 +1,173 @@
 <<: !include platform.yaml
 
-# ESPhomen alustus. 
-# Tässä annetaan laitteelle nimi, asetetaan omaa mikrokontrolleria vastaavat tiedot
-# Lisäksi tässä alustetaan perusasetukset, kuten ajastus pakkosulatukselle ja pakotetaan sulatusrele pois päältä
+# initialize and define mitsurunner
 esphome:
   name: mitsurunner
-#kaksi seuraavaa riviä pitää säätää jokaisen oman rautansa mukaiseksi
   platform: $platform_type
   board: $board_type
-  on_boot: # Laitteen bootatessa varmista, että sulatus ei käynnisty päälle kytkemällä se pois päältä ja käynnistä ajastus pakkosulatukselle
-  - switch.turn_on: gpio_rele
-  - script.execute: ajasta_pakkosulatus
-#  - script.execute: kaynnista_minimi_aika
+  on_boot: 
+  - switch.turn_on: gpio_relay
+  - script.execute: schedule_forced_defrosting
+#  - script.execute: start_min_heting_time_timer
   includes:
     - constants.h
 
-# Globaalit muuttujat, joilla estetään esim. alle minimiajan tapahtuvat sulatukset.
+# global varialbes and their initial values
 globals:
-  - id: G_minimiaika_kulunut
+  - id: G_min_heating_time_passed #variable controlling minimum heating time after defrosting
     type: bool
     restore_value: no
     initial_value: 'true'
-  - id: G_ylityksen_minimiaika_kulunut
+  - id: G_excess_min_time_passed #variable preventing defrosting untill excess time has been passed
     type: bool
     restore_value: no
     initial_value: 'false'
 
-# dallas DS28B20 dataväylä kytketään pinniin D2. Voit vaihtaa tähän pinnin numeron, johon sinulla data tulee.
-# laite tulee mittaamaan lämmön 10s välein. Se lienee riittävä tarkkuus tässä. 
+# dallas DS28B20 sensor
+# device measures temperature in 10 seconds interval
 dallas:
-  - pin: $dallas_pinni
+  - pin: $dallas_pin
     update_interval: 10s
     id: dallas1
 
-# Releen/transistorin ohjauspinnin ohjaus GPIO pinnin kautta.
-# Pinnissä virta = päällä = jännite -- Sulatushuijaus päällä
-# Pinnissä ei virtaa = pois päältä = 0v -- sulatushuijausvastus pois päältä.
-# D1 pinniin oikeasti rele. Nyt testataan vain ledillä, joka toimii D0 portin kautta toiminto, ennen releeseen kytkemistä.
+# switch component to control defrost prevention relay
+# if switch on --> Relay actively driven
+# if switch off --> Relay in default state
 switch:
   - platform: gpio
-    pin: $rele_pinni
-    name: "Sulatushuijauksen ohjaus"
-    id: gpio_rele
+    pin: $relay_pin
+    name: "Defrost prevention control"
+    id: gpio_relay
 
-# Lämpötilasensorit, eli nuo dallasit. Sinun pitää tunnistaa ensin fläsäämällä dallasisi osoite. 
-# tee kytkentä ja anna laitteen tunnistaa dallasit. Tarkista logeista, mitkä osoitteet sinne tulostuu. 
-# lämmitä kädellä toista sensoria ja merkitse se. elä sekoita enää sensoreita tämän jälkeen
-# valitse, kummasta tulee kennon lämpöä mittaava sensori ja kummasta ulkolämpötä mittaava
-# heitin nyt tarkkuudeksi kaksi desimaalia. On ainakin tarkka...
+# Dallas DS18B20 temperature sensor details. 
+# you need to check IDs of temperature sensors by starting this SW and checking those from logs printing to termina. 
+# After checked, copy IDs to platform.yaml file and heat another sensor. Check which sensor it were and use it for the appropriate topic
 sensor:
   - platform: dallas
-    address: $dallas_address_kenno # tämä on sinulla eri aina ja jokaiselle sensorille uniikki. Näet tämän logeista kun kommentoit tämän rivin pois
-    name: "kennonlampotila"
-    id: kennonlampo
+    address: $dallas_address_heat_exhanger_temp # Please remember to define this on platform.yaml
+    name: "outdoor unit heat exhanger temperature"
+    id: heat_exhanger_temp
     accuracy_decimals: 1
-    state_topic: $topic_kenno
+    state_topic: $topic_heatexhanger
     filters:    
       - filter_out: nan
   - platform: dallas
-    address: $dallas_address_ulko
-    name: "ulkolampotila"
-    id: ulkolampo
+    address: $dallas_address_outdoor_temp # Please remember to define this on platform.yaml
+    name: "outdoor temperature"
+    id: outdoor_temp
     accuracy_decimals: 1
-    state_topic: $topic_ulko
+    state_topic: $topic_outdoor
     filters:
       - filter_out: nan
 
-# Ylimääräinen anturi esimerkiksi ulkolämpötilan loggaamiselle kauempaa kennosta
-# Ei tarvita sulatushuijaukseen, voidaan kommentoida pois
+# additional sensors can be added by defining new sensors - uncomment example below:
+# e.g. for having another sensors to measure outdoor temperature from different place. (not used by logic)
   # - platform: dallas
   #   address: $dallas_address_test
-  #   name: "testilampo"
-  #   id: testilampo
+  #   name: "test_temperature"
+  #   id: test_temperature
   #   accuracy_decimals: 1
   #   state_topic: $topic_test
   #   filters:
   #     - filter_out: nan
 
-# sulatuksen triggaus logiikka alkaa tästä
-# nyt logiikka tekee tätä tarkistusta 10s välein. tämä aika voidaan säätää pidemmäksi, tuskin näin usein tarvitsee tarkistella
+# Logic to trigger defrosting when needed
   - platform: template
-    id: sulatuspaalle
-    name: "Kytketaanko sulatus paalle"
+    id: is_defrosting_needed
+    name: "Check if defrosting is needed"
     update_interval: 30s
-# tässä tarkistetaan lämpötilojen ero, blokki C++ koodia tuon lambda rivin jälkeen. 
-# tähän pitäisi ehkä lisätä tarkistus, että ollaan pakkasella. Mutta en lisännyt koska testaan sisällä.
-# viisi astetta hardkoodattu --> pitää muuttaa muuttujaksi, jota voi säätää
-# vois lisäksi seurata liukuvaa keskiarvoa, tai esim: kolme viimeistä ollut alle "triggerilämmön"
+# this C++ code checks if all requirements are fullfilled to trigger defrosting and triggers it then.
     lambda: !lambda |-
-        float lampotilaero = (id(ulkolampo).state - id(kennonlampo).state);
-        bool resetoi_lampotilaeron_minimiaika = false;
+        float temperature_delta = (id(outdoor_temp).state - id(heat_exhanger_temp).state);
+        bool reset_min_time_of_temperature_delta = false;
 
-        // JOS riittävän iso ero ja riittävän kauan aikaa kulunut edellisestä sulatuksesta
-        if ( lampotilaero >= TEMPERATURE_DELTA_TO_DEFROST && id(G_minimiaika_kulunut) == true) {
-            // JOS ylityskin ollut riittävän kauan aikaa tai ylitetään ylempi lämpötilaero
-            if ( id(G_ylityksen_minimiaika_kulunut) == true || lampotilaero >= TEMPERATURE_DELTA_TO_FORCE_DEFROST) {
-                // sulatellaan
-                id(tee_sulatus).execute();
-                resetoi_lampotilaeron_minimiaika = true;
+        // if temperature delta is over treshold and minimum heating time has passed
+        if ( temperature_delta >= TEMPERATURE_DELTA_TO_DEFROST && id(G_min_heating_time_passed) == true) {
+            // if temperature has been long enough over treshold or force defrost temperature is exceeded
+            if ( id(G_excess_min_time_passed) == true || temperature_delta >= TEMPERATURE_DELTA_TO_FORCE_DEFROST) {
+                // activate defrosting
+                id(trigger_defrosting).execute();
+                reset_min_time_of_temperature_delta = true;
                 }
-            // JOS ylityksen minimiaikatimer on käynnisä, odotellaan vain... Eli tyhjä blokki
-            else if ( id(kaynnista_lampotileron_minimi_aika).is_running() ) {
+            // if excess timer were not yet passed, do nothing
+            else if ( id(start_excess_min_time_timer).is_running() ) {
                 }
-            // Ei ylityksen minimiaikaa käynnissä. Käynnistä se, koska  muut ehdot täyttyvät lämmitykselle. 
+            // excess min itme were not on, but other defrosting requirements were fullfilled to start it
             else  
                 { 
-                id(kaynnista_lampotileron_minimi_aika).execute();
+                id(start_excess_min_time_timer).execute();
                 }
             }            
         else {        
-            // Pidetään huoli, että jos lämpötilaero laskee alle säädetyn rajan, ylityksen minimiajan ajastin nollataan.
-            resetoi_lampotilaeron_minimiaika = true;       
+            // if during the excess timer, the temperature returns back below treshold, then cancel the timer
+            reset_min_time_of_temperature_delta = true;       
             }
         
-        if ( resetoi_lampotilaeron_minimiaika ) {
-            id(G_ylityksen_minimiaika_kulunut) = false;
+        if ( reset_min_time_of_temperature_delta ) {
+            id(G_excess_min_time_passed) = false;
             
-            // pysäytä timerkin, jos päällä
-            if ( id(kaynnista_lampotileron_minimi_aika).is_running() ) {
-                id(kaynnista_lampotileron_minimi_aika).stop();  
+            // timer is needed to be stopped only if it is running
+            if ( id(start_excess_min_time_timer).is_running() ) {
+                id(start_excess_min_time_timer).stop();  
                 }
             id(mqtt_client).publish(TOPIC_IS_EXCESS_MIN_TIME_PASSED, to_string(0.0));
             }
 
-        // Jos haluat logata lämpötilaeroa, lisää defineen polku constants.h -tiedostoon
+        // if you want to get MQTT logs from temperature delta all the time, define TOPIC_TEMP_DELTA in constants.h file
         #ifdef TOPIC_TEMP_DELTA_TRACES
-        id(mqtt_client).publish(TOPIC_TEMP_DELTA, to_string(lampotilaero));
+        id(mqtt_client).publish(TOPIC_TEMP_DELTA, to_string(temperature_delta));
         #endif
 
-        return lampotilaero;
+        return temperature_delta;
 
 
-# sulatus scripti
-# Tällä scriptillä hoidetaan sulatus releen ohjaus kytkemään vastuksen pois turn_on ja turn_off välisen ajan
-# scriptiä voidaan kutsua vaikka sulatus on meneillään, eli se ei aiheuta "päällekäisiä sulatuksia" jotka pidentävät ajastimen aikaa joka kerta 
-# scripti hoitaa releen ohjauksen sulatusasentoon scriptissä määritety ajan ajaksi
-# --> AJASTIN PITÄÄ SÄÄTÄÄ SOPIVAKSI
+# defrosting script
 script:
-  - id: tee_sulatus
-    mode: single #suoritetaan vain, jos ei ole jo sulatusta meneillään. Tämä tulostaa logiin varoituksen vain.
+  - id: trigger_defrosting
+    mode: single #will be started only if there were no ongoing defrosting already
     then:    
-    - switch.turn_off: gpio_rele    
-    - script.execute: kaynnista_minimi_aika
-    - script.execute: ajasta_pakkosulatus
+    - switch.turn_off: gpio_relay    
+    - script.execute: start_min_heting_time_timer
+    - script.execute: schedule_forced_defrosting
     - lambda: !lambda |-
         id(mqtt_client).publish(TOPIC_DEFROST_HACK_STATE, to_string(0.0));
     - delay: 30min    
-    - switch.turn_on: gpio_rele
+    - switch.turn_on: gpio_relay
     - lambda: !lambda |-
         id(mqtt_client).publish(TOPIC_DEFROST_HACK_STATE, to_string(1.0));
 
 
 
-#Minimiajan toteutus scripti:
-#estää minimiajan aikana tapahtuvan sulatuksen. Eli määrittää lyhyimmän mahdollisen lämmitysjakson.
-#nyt ajastettu 50min, joka minulla on joskus vetänyt jo kennon ihan tukkoon
-  - id: kaynnista_minimi_aika
-    mode: single #suoritetaan vain, jos ei ole jo sulatusta meneillään. Tämä tulostaa logiin varoituksen vain.
+# scipt implementing timer for minimum heating time
+# G_min_heating_time_passed is used through this timer to prevent defrosting too quickly after previous defrosting
+  - id: start_min_heting_time_timer
+    mode: single #will be started only if there were no ongoing defrosting already
     then:  
     - lambda: !lambda |-
-        id(G_minimiaika_kulunut) = false;
+        id(G_min_heating_time_passed) = false;
         id(mqtt_client).publish(TOPIC_IS_HEATING_MIN_TIME_PASSED, to_string(0.0));
-    - delay: 50min #aseta tähän haluamasi lyhyin lämmitysaika. Minulla 50min. Tämä aika lasketaan sulatuksen alusta! Eli sisältää sulatuksen.
+    - delay: 50min 
     - lambda: !lambda |-
-        id(G_minimiaika_kulunut) = true; 
+        id(G_min_heating_time_passed) = true; 
         id(mqtt_client).publish(TOPIC_IS_HEATING_MIN_TIME_PASSED, to_string(1.0));
         
-#Lämpöyilaeron ylityksen Minimiajan toteutus scripti:
-#estää lyhyiden lämpötilaerojen aiheuttamat sulatuksen triggerit
-  - id: kaynnista_lampotileron_minimi_aika
-    mode: single #suoritetaan vain, jos ei ole jo sulatusta meneillään. Tämä tulostaa logiin varoituksen vain.
+# script implementing timer preventing defrosting if temperature delta excess defrosting treshold limit just short time. (filters out peaks)
+  - id: start_excess_min_time_timer
+    mode: single #will be started only if there were no ongoing defrosting already
     then:  
     - lambda: !lambda |-
-        id(G_ylityksen_minimiaika_kulunut) = false;
+        id(G_excess_min_time_passed) = false;
         id(mqtt_client).publish(TOPIC_IS_EXCESS_MIN_TIME_PASSED, to_string(0.5));
-    - delay: 5min #minimi aika, jonka lämpötilaero oltava yli rajan, jotta sulatus saa alkaa
+    - delay: 5min 
     - lambda: !lambda |-
-        id(G_ylityksen_minimiaika_kulunut) = true; 
+        id(G_excess_min_time_passed) = true; 
         id(mqtt_client).publish(TOPIC_IS_EXCESS_MIN_TIME_PASSED, to_string(1.0));
 
     
-# pakkosulatukselle scripti
-# tämä scripti hoitaa pakkosulatuksen ajastukset. 
-# tätä kutsutuaan siis kun laite käynnistyy --> pakkosulatus allaolevan ajan kuluttua, jos sitä ennen ei sulateta ja täten nollata ajastinta alkamaan alusta tai
-# tätä kutsutaan jokaisen sulatuksen päätteeksi --> pakkosulatuksen ajastus nollautuu jokaisen sulatuksen päätteeksi ja pakkosulatusaikaa aletaan mittaamaan taas alusta
-# näin pakkosulatus tulee aina vakioajan päähän edellisestä sulatuksesta tai tämän ohjauslaitteen käynnistämisestä. 
-# Pakkosulatuksen ajastus vakiona mitsussa 150min = 2h 30min. Tätä voi säätää oman mielensä mukaan, mikäli uskaltaa ajaa kauemmin pumppua. 
-  - id: ajasta_pakkosulatus
-    mode: restart #kutsuttaessa scripti uudelleenkäynnistetään.              
+# scipt for forced defrosting
+# forced defrosting prevents oil to accumulate to some places in device, preventing compressor to get oiled during it's running 
+  - id: schedule_forced_defrosting
+    mode: restart #timer will be restarted from the beginning allways when called --> starts always again           
     then:
-    - delay: 150min #pakkosulatusten väli 150min tähän, jos haluaa noudattaa mitsubishin väliä
-    - script.execute: tee_sulatus
+    - delay: 150min
+    - script.execute: trigger_defrosting
