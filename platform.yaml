@@ -28,7 +28,7 @@ mqtt:
   client_id: change_this
   password: change_this
 #mqtt message prefix, change this to what you want
-  topic_prefix: mzl_ln35/lampotilat
+  topic_prefix: msz_ln/temperature
 
 # enable logging to terminal - you can get log messages over wifi
 logger:
@@ -40,12 +40,13 @@ substitutions:
 
 # addresses for your dallas DS18B20 temperature sensors - you need to update these
   dallas_address_heat_exchanger_temp: '0x653C01D607697928'
-  dallas_address_outdoor_temp:       '0x93000802B67D1E10'
+  dallas_address_outdoor_temp:         '0x93000802B67D1E10'
   
-  topic_heatexchanger:      'pub/xxx/xxx/xxx/lampotila' #if you will use IOT guru, please uncomment and update this to get graphs working
-  topic_outdoor:           'pub/xxx/xxx/xxx/lampotila' #if you will use IOT guru, please uncomment and update this to get graphs working
+  topic_heatexchanger:      'pub/xxx/xxx/xxx/temperature' #if you will use IOT guru, please uncomment and update this to get graphs working
+  topic_outdoor:            'pub/xxx/xxx/xxx/temperature' #if you will use IOT guru, please uncomment and update this to get graphs working
+
+  topic_state:              '"pub/xxx/xxx/xxx/state"' #notice both single and double quote here
+  topic_delta:              '"pub/xxx/xxx/xxx/delta"' #notice both single and double quote here
 # IO-pins:
-  dallas_pin:         'D2' # pin for DS18B20 1-wire temperature sensors
-  relay_pin:           'D0' # pin for controlling relay
-  delay_heating_min: 20min
-  
+  dallas_pin: 'D2' # pin for DS18B20 1-wire temperature sensors
+  relay_pin:  'D0' # pin for controlling relay

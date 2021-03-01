@@ -1,7 +1,6 @@
 #ifndef __STATE_H__
 #define __STATE_H__
 
-
 enum State
 {
 	ST_RESET = 0,
