@@ -24,6 +24,9 @@ globals:
   - id: G_state_time_passed #for state machine timeouts etc.
     type: bool
     initial_value: 'false'
+  - id: G_state_timer #for state machine timeouts etc.
+    type: int
+    initial_value: '0'
 
 # global constants
   - id: G_TOPIC_STATE
@@ -107,7 +110,6 @@ sensor:
                         id(enter_Idle).execute();
                     }                  
                 }
-
                 break;
 
             case ST_IDLE:
@@ -165,7 +167,7 @@ sensor:
                 }
                 break;
 
-            // Should never end up in here.
+            // Should never end up in here
             default:
                 id(enter_Idle).execute();
                 break;
@@ -184,12 +186,8 @@ script:
     - switch.turn_off: gpio_relay
     - lambda: !lambda |-
         id(G_state) = ST_RESET;
-        id(G_state_time_passed) = false;
-    - script.execute: stop_inactive_states
-
-    - delay: !lambda "return RESET_SENSOR_DELAY_SEC * 1000;"
-    - lambda: !lambda |-
-        id(G_state_time_passed) = true;
+        id(G_state_timer) = RESET_SENSOR_DELAY_SEC * 1000;
+    - script.execute: start_state_timer
 
 ############### ST_IDLE ###############
   - id: enter_Idle
@@ -198,8 +196,6 @@ script:
     - switch.turn_on: gpio_relay
     - lambda: !lambda |-
         id(G_state) = ST_IDLE;
-        id(G_state_time_passed) = false;
-    - script.execute: stop_inactive_states
 
 ########## ST_TEMP_EXCEEDED ###########
   - id: enter_TempExceeded
@@ -208,12 +204,8 @@ script:
     - switch.turn_on: gpio_relay
     - lambda: !lambda |-
         id(G_state) = ST_TEMP_EXCEEDED;
-        id(G_state_time_passed) = false;
-    - script.execute: stop_inactive_states
-
-    - delay: !lambda "return TEMPERATURE_DELTA_EXCESS_TIME * 60000;"
-    - lambda: !lambda |-
-        id(G_state_time_passed) = true;
+        id(G_state_timer) = TEMPERATURE_DELTA_EXCESS_TIME * 60000;
+    - script.execute: start_state_timer
 
 ######### ST_START_DEFROSTING #########
   - id: enter_StartDefrosting
@@ -222,13 +214,9 @@ script:
     - switch.turn_off: gpio_relay
     - lambda: !lambda |-
         id(G_state) = ST_START_DEFROSTING;
-        id(G_state_time_passed) = false;
-    - script.execute: stop_inactive_states
+        id(G_state_timer) =  DEFROST_TIMEOUT * 60000;
+    - script.execute: start_state_timer
     - script.execute: schedule_forced_defrosting
-
-    - delay: !lambda "return DEFROST_TIMEOUT * 60000;"
-    - lambda: !lambda |-
-        id(G_state_time_passed) = true;
 
 ######## ST_DEFROSTING_STARTED ########
   - id: enter_DefrostingStarted
@@ -237,12 +225,8 @@ script:
     - switch.turn_off: gpio_relay
     - lambda: !lambda |-
         id(G_state) = ST_DEFROSTING_STARTED;
-        id(G_state_time_passed) = false;
-    - script.execute: stop_inactive_states
-
-    - delay: !lambda "return RELAY_OFF_TIME * 60000;"
-    - lambda: !lambda |-
-        id(G_state_time_passed) = true;
+        id(G_state_timer) =  RELAY_OFF_TIME * 60000;
+    - script.execute: start_state_timer
 
 ######### ST_HEATING_MIN_TIME #########
   - id: enter_HeatingMinTime
@@ -251,27 +235,20 @@ script:
     - switch.turn_on: gpio_relay
     - lambda: !lambda |-
         id(G_state) = ST_HEATING_MIN_TIME;
-        id(G_state_time_passed) = false;
-    - script.execute: stop_inactive_states
-
-    - delay: !lambda "return (MIN_HEATING_TIME - RELAY_OFF_TIME)* 60000;"
-    - lambda: !lambda |-
-        id(G_state_time_passed) = true;
+        id(G_state_timer) =  (MIN_HEATING_TIME - RELAY_OFF_TIME) * 60000;
+    - script.execute: start_state_timer
 
 # ------------------------------------------------------
 
-# Script to ensure that only one state machine state is running
-  - id: stop_inactive_states
-    mode: single
+# Script for timer used for state machine timeouts etc.
+  - id: start_state_timer
+    mode: restart
     then:
     - lambda: !lambda |-
-        if(id(G_state) != ST_RESET)              id(enter_Reset).stop();
-        if(id(G_state) != ST_IDLE)               id(enter_Idle).stop();
-        if(id(G_state) != ST_TEMP_EXCEEDED)      id(enter_TempExceeded).stop();
-        if(id(G_state) != ST_START_DEFROSTING)   id(enter_StartDefrosting).stop();
-        if(id(G_state) != ST_DEFROSTING_STARTED) id(enter_DefrostingStarted).stop();
-        if(id(G_state) != ST_HEATING_MIN_TIME)   id(enter_HeatingMinTime).stop();
-
+        id(G_state_time_passed) = false;
+    - delay: !lambda "return id(G_state_timer);"
+    - lambda: !lambda |-
+        id(G_state_time_passed) = true;
     
 # Script for forced defrosting
 # Forced defrosting prevents oil to accumulate to some places in device, 
