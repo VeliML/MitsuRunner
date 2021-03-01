@@ -88,8 +88,6 @@ sensor:
 # this C++ code checks if all requirements are fullfilled to trigger defrosting and triggers it then.
     lambda: !lambda |-
         float temperature_delta = (id(outdoor_temp).state - id(heat_exchanger_temp).state);
-        bool reset_min_time_of_temperature_delta = false;
-
 
         // if you want to get MQTT logs from temperature delta all the time, define TOPIC_TEMP_DELTA in constants.h file
         #ifdef TOPIC_TEMP_DELTA_MESSAGES
