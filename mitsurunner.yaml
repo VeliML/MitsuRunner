@@ -15,10 +15,7 @@ esphome:
 
 # global variables and their initial values
 globals:
-  - id: G_min_heating_time_passed #variable controlling minimum heating time after defrosting
-    type: bool
-    initial_value: 'true'
-  - id: G_excess_min_time_passed #variable preventing defrosting until excess time has been passed
+  - id: G_max_heating_time_passed
     type: bool
     initial_value: 'false'
   - id: G_state #variable containing state machine state
@@ -114,15 +111,20 @@ sensor:
                 break;
 
             case ST_IDLE:
+                // If maximum heating time exceeded, start defrosting immediately
+                if (id(G_max_heating_time_passed)) {
+                    id(enter_StartDefrosting).execute();
+                }
                 // Wait for the temperature delta threshold to be exceeded.
-                if (temperature_delta >= TEMPERATURE_DELTA_TO_DEFROST) {
+                else if (temperature_delta >= TEMPERATURE_DELTA_TO_DEFROST) {
                     id(enter_TempExceeded).execute();
                 }
                 break;
 
             case ST_TEMP_EXCEEDED:
                 // If the time threshold or the upper temperature limit is exceeded, start defrosting
-                if (id(G_state_time_passed) || (temperature_delta >= TEMPERATURE_DELTA_TO_FORCE_DEFROST)) {
+                if (id(G_state_time_passed) || id(G_max_heating_time_passed) ||
+                        (temperature_delta >= TEMPERATURE_DELTA_TO_FORCE_DEFROST)) {
                     id(enter_StartDefrosting).execute();
                 }
                 else if (temperature_delta < TEMPERATURE_DELTA_TO_DEFROST) {
@@ -149,8 +151,12 @@ sensor:
                 break;
 
             case ST_HEATING_MIN_TIME:
+                // Max time should never pass in this state, but checked here to be sure.
+                if (id(G_max_heating_time_passed)) {
+                    id(enter_StartDefrosting).execute();
+                } 
                 // If the upper temperature limit is exceeded, start defrosting directly.
-                if (temperature_delta >= TEMPERATURE_DELTA_TO_FORCE_DEFROST) {
+                else if (temperature_delta >= TEMPERATURE_DELTA_TO_FORCE_DEFROST) {
                     id(enter_StartDefrosting).execute();
                 }
                 // Do not react normal temperature delta threshold before min heating time has been passed.
@@ -159,7 +165,7 @@ sensor:
                 }
                 break;
 
-            // Should never end up in here
+            // Should never end up in here.
             default:
                 id(enter_Idle).execute();
                 break;
@@ -218,7 +224,6 @@ script:
         id(G_state) = ST_START_DEFROSTING;
         id(G_state_time_passed) = false;
     - script.execute: stop_inactive_states
-    - script.stop: schedule_forced_defrosting
     - script.execute: schedule_forced_defrosting
 
     - delay: !lambda "return DEFROST_TIMEOUT * 60000;"
@@ -268,11 +273,14 @@ script:
         if(id(G_state) != ST_HEATING_MIN_TIME)   id(enter_HeatingMinTime).stop();
 
     
-# Scipt for forced defrosting
+# Script for forced defrosting
 # Forced defrosting prevents oil to accumulate to some places in device, 
 # which may cause compressor not to get oiled when running.
   - id: schedule_forced_defrosting
     mode: restart #timer will be restarted from the beginning allways when called --> starts always again           
     then:
+    - lambda: !lambda |-
+        id(G_max_heating_time_passed) = false;
     - delay: !lambda "return MAX_HEATING_TIME * 60000;"
-    - script.execute: enter_StartDefrosting
+    - lambda: !lambda |-
+        id(G_max_heating_time_passed) = true;
