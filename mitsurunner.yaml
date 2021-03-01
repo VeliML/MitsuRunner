@@ -8,9 +8,9 @@ esphome:
   on_boot: 
   - switch.turn_on: gpio_relay
   - script.execute: schedule_forced_defrosting
-#  - script.execute: start_min_heating_time_timer
   includes:
     - constants.h
+    - state.h
 
 # global variables and their initial values
 globals:
@@ -22,6 +22,15 @@ globals:
     type: bool
     restore_value: no
     initial_value: 'false'
+  - id: G_state
+    type: int
+    restore_value: no
+    initial_value: 'ST_RESET'
+  - id: G_state_time_passed
+    type: bool
+    restore_value: no
+    initial_value: 'false'
+
 
 # dallas DS28B20 sensor
 # device measures temperature in 10 seconds interval
@@ -81,88 +90,166 @@ sensor:
         float temperature_delta = (id(outdoor_temp).state - id(heat_exchanger_temp).state);
         bool reset_min_time_of_temperature_delta = false;
 
-        // if temperature delta is over treshold and minimum heating time has passed
-        if ( temperature_delta >= TEMPERATURE_DELTA_TO_DEFROST && id(G_min_heating_time_passed) == true) {
-            // if temperature has been long enough over treshold or force defrost temperature is exceeded
-            if ( id(G_excess_min_time_passed) == true || temperature_delta >= TEMPERATURE_DELTA_TO_FORCE_DEFROST) {
-                // activate defrosting
-                id(trigger_defrosting).execute();
-                reset_min_time_of_temperature_delta = true;
-                }
-            // if excess timer were not yet passed, do nothing
-            else if ( id(start_excess_min_time_timer).is_running() ) {
-                }
-            // excess min time were not on, but other defrosting requirements were fullfilled to start it
-            else  
-                { 
-                id(start_excess_min_time_timer).execute();
-                }
-            }            
-        else {        
-            // if during the excess timer, the temperature returns back below treshold, then cancel the timer
-            reset_min_time_of_temperature_delta = true;       
-            }
-        
-        if ( reset_min_time_of_temperature_delta ) {
-            id(G_excess_min_time_passed) = false;
-            
-            // timer is needed to be stopped only if it is running
-            if ( id(start_excess_min_time_timer).is_running() ) {
-                id(start_excess_min_time_timer).stop();  
-                }
-            id(mqtt_client).publish(TOPIC_IS_EXCESS_MIN_TIME_PASSED, to_string(0.0));
-            }
 
         // if you want to get MQTT logs from temperature delta all the time, define TOPIC_TEMP_DELTA in constants.h file
         #ifdef TOPIC_TEMP_DELTA_MESSAGES
         id(mqtt_client).publish(TOPIC_TEMP_DELTA, to_string(temperature_delta));
         #endif
 
+        id(mqtt_client).publish(TOPIC_STATE, to_string(id(G_state)));
+
+        switch(id(G_state)) {
+
+            // This state is executed only in reset
+            case ST_RESET:
+                // If defrosting is going on
+                if (temperature_delta < 0.0) {
+                    id(EnterDefrostingStarted).execute();
+                }
+                // If defrosting is not going on
+                else {
+                    id(schedule_forced_defrosting).execute();
+                    id(EnterIdle).execute();
+                }
+                break;
+
+            case ST_IDLE:
+                if (temperature_delta >= TEMPERATURE_DELTA_TO_DEFROST) {
+                    id(EnterTempExceeded).execute();
+                }
+                break;
+
+            case ST_TEMP_EXCEEDED:
+                if (id(G_state_time_passed) || (temperature_delta >= TEMPERATURE_DELTA_TO_FORCE_DEFROST)) {
+                    id(EnterStartDefrosting).execute();
+                }
+                else if (temperature_delta < TEMPERATURE_DELTA_TO_DEFROST) {
+                    id(EnterIdle).execute();
+                }
+                break;
+
+            case ST_START_DEFROSTING:
+                if (temperature_delta < 0.0) {
+                    id(EnterDefrostingStarted).execute();
+                }
+                // Timeout to go back to the idle state, if defrosting has not been started
+                else if (id(G_state_time_passed)) {
+                    id(EnterIdle).execute();
+                }
+                break;
+
+            case ST_DEFROSTING_STARTED:
+                if (id(G_state_time_passed)) {
+                    id(EnterHeatingMinTime).execute();
+                }
+                break;
+
+            case ST_HEATING_MIN_TIME:
+                if (id(G_state_time_passed)) {
+                    id(EnterIdle).execute();
+                }
+                break;
+        }
         return temperature_delta;
 
 
-# defrosting script
 script:
-  - id: trigger_defrosting
-    mode: single #will be started only if there were no ongoing defrosting already
-    then:    
-    - switch.turn_off: gpio_relay    
-    - script.execute: start_min_heating_time_timer
-    - script.execute: schedule_forced_defrosting
+
+# -------- State machine state entrance scripts --------
+
+  - id: EnterIdle
+    mode: single
+    then:
+    #Stop other state scripts
+    - script.stop: EnterTempExceeded
+    - script.stop: EnterStartDefrosting
+    - script.stop: EnterDefrostingStarted
+    - script.stop: EnterHeatingMinTime
+    - switch.turn_on: gpio_relay
+
     - lambda: !lambda |-
-        id(mqtt_client).publish(TOPIC_DEFROST_HACK_STATE, to_string(0.0));
-    - delay: 30min    
+        id(G_state) = ST_IDLE;
+        id(G_state_time_passed) = false;
+
+
+  - id: EnterTempExceeded
+    mode: single
+    then:
+    #Stop other state scripts
+    - script.stop: EnterIdle
+    - script.stop: EnterStartDefrosting
+    - script.stop: EnterDefrostingStarted
+    - script.stop: EnterHeatingMinTime
+    - switch.turn_on: gpio_relay
+
+    - lambda: !lambda |-
+        id(G_state) = ST_TEMP_EXCEEDED;
+        id(G_state_time_passed) = false;
+
+    - delay: 5min
+    - lambda: !lambda |-
+        id(G_state_time_passed) = true;
+
+
+  - id: EnterStartDefrosting
+    mode: single
+    then:
+    #Stop other state scripts
+    - script.stop: EnterIdle
+    - script.stop: EnterTempExceeded
+    - script.stop: EnterDefrostingStarted
+    - script.stop: EnterHeatingMinTime
+    - switch.turn_off: gpio_relay
+
+    - lambda: !lambda |-
+        id(G_state) = ST_START_DEFROSTING;
+        id(G_state_time_passed) = false;
+
+    - delay: 10min
+    - lambda: !lambda |-
+        id(G_state_time_passed) = true;
+
+
+  - id: EnterDefrostingStarted
+    mode: single
+    then:
+    #Stop other state scripts
+    - script.stop: EnterIdle
+    - script.stop: EnterTempExceeded
+    - script.stop: EnterStartDefrosting
+    - script.stop: EnterHeatingMinTime
+    - switch.turn_off: gpio_relay
+
+    - script.stop: schedule_forced_defrosting
+    - script.execute: schedule_forced_defrosting
+
+    - lambda: !lambda |-
+        id(G_state) = ST_DEFROSTING_STARTED;
+        id(G_state_time_passed) = false;
+
+    - delay: 30min
+    - lambda: !lambda |-
+        id(G_state_time_passed) = true;
+
+
+  - id: EnterHeatingMinTime
+    mode: single
+    then:
+    #Stop other state scripts
+    - script.stop: EnterIdle
+    - script.stop: EnterTempExceeded
+    - script.stop: EnterStartDefrosting
+    - script.stop: EnterDefrostingStarted
     - switch.turn_on: gpio_relay
     - lambda: !lambda |-
-        id(mqtt_client).publish(TOPIC_DEFROST_HACK_STATE, to_string(1.0));
+        id(G_state) = ST_HEATING_MIN_TIME;
+        id(G_state_time_passed) = false;
 
+    - delay: 20min
+    - lambda: !lambda |-
+        id(G_state_time_passed) = true;
 
-
-# scipt implementing timer for minimum heating time
-# G_min_heating_time_passed is used through this timer to prevent defrosting too quickly after previous defrosting
-  - id: start_min_heating_time_timer
-    mode: single #will be started only if there were no ongoing defrosting already
-    then:  
-    - lambda: !lambda |-
-        id(G_min_heating_time_passed) = false;
-        id(mqtt_client).publish(TOPIC_IS_HEATING_MIN_TIME_PASSED, to_string(0.0));
-    - delay: 50min 
-    - lambda: !lambda |-
-        id(G_min_heating_time_passed) = true; 
-        id(mqtt_client).publish(TOPIC_IS_HEATING_MIN_TIME_PASSED, to_string(1.0));
-        
-# script implementing timer preventing defrosting if temperature delta excess defrosting treshold limit just short time. (filters out peaks)
-  - id: start_excess_min_time_timer
-    mode: single #will be started only if there were no ongoing defrosting already
-    then:  
-    - lambda: !lambda |-
-        id(G_excess_min_time_passed) = false;
-        id(mqtt_client).publish(TOPIC_IS_EXCESS_MIN_TIME_PASSED, to_string(0.5));
-    - delay: 5min 
-    - lambda: !lambda |-
-        id(G_excess_min_time_passed) = true; 
-        id(mqtt_client).publish(TOPIC_IS_EXCESS_MIN_TIME_PASSED, to_string(1.0));
-
+# ------------------------------------------------------
     
 # scipt for forced defrosting
 # forced defrosting prevents oil to accumulate to some places in device, preventing compressor to get oiled during it's running 
@@ -170,7 +257,5 @@ script:
     mode: restart #timer will be restarted from the beginning allways when called --> starts always again           
     then:
     - delay: 150min
-    - script.execute: trigger_defrosting
-    
-
+    - script.execute: EnterStartDefrosting
 
