@@ -47,4 +47,5 @@ substitutions:
 # IO-pins:
   dallas_pin:         'D2' # pin for DS18B20 1-wire temperature sensors
   relay_pin:           'D0' # pin for controlling relay
+  delay_heating_min: 20min
   

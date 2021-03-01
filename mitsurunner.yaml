@@ -155,105 +155,97 @@ script:
 
 # -------- State machine state entrance scripts --------
 
+############### ST_IDLE ###############
   - id: EnterIdle
     mode: single
     then:
     #Stop other state scripts
-    - script.stop: EnterTempExceeded
-    - script.stop: EnterStartDefrosting
-    - script.stop: EnterDefrostingStarted
-    - script.stop: EnterHeatingMinTime
     - switch.turn_on: gpio_relay
-
     - lambda: !lambda |-
         id(G_state) = ST_IDLE;
         id(G_state_time_passed) = false;
+    - script.execute: stop_inactive_states
 
-
+########## ST_TEMP_EXCEEDED ###########
   - id: EnterTempExceeded
     mode: single
     then:
     #Stop other state scripts
-    - script.stop: EnterIdle
-    - script.stop: EnterStartDefrosting
-    - script.stop: EnterDefrostingStarted
-    - script.stop: EnterHeatingMinTime
     - switch.turn_on: gpio_relay
-
     - lambda: !lambda |-
         id(G_state) = ST_TEMP_EXCEEDED;
         id(G_state_time_passed) = false;
+    - script.execute: stop_inactive_states
 
-    - delay: 5min
+    - delay: !lambda "return TEMPERATURE_DELTA_EXCESS_TIME * 60000;"
     - lambda: !lambda |-
         id(G_state_time_passed) = true;
 
-
+######### ST_START_DEFROSTING #########
   - id: EnterStartDefrosting
     mode: single
     then:
     #Stop other state scripts
-    - script.stop: EnterIdle
-    - script.stop: EnterTempExceeded
-    - script.stop: EnterDefrostingStarted
-    - script.stop: EnterHeatingMinTime
     - switch.turn_off: gpio_relay
-
-    - script.stop: schedule_forced_defrosting
-    - script.execute: schedule_forced_defrosting
-
     - lambda: !lambda |-
         id(G_state) = ST_START_DEFROSTING;
         id(G_state_time_passed) = false;
+    - script.execute: stop_inactive_states
+    - script.stop: schedule_forced_defrosting
+    - script.execute: schedule_forced_defrosting
 
-    - delay: 10min
+    - delay: !lambda "return DEFROST_TIMEOUT * 60000;"
     - lambda: !lambda |-
         id(G_state_time_passed) = true;
 
-
+######## ST_DEFROSTING_STARTED ########
   - id: EnterDefrostingStarted
     mode: single
     then:
     #Stop other state scripts
-    - script.stop: EnterIdle
-    - script.stop: EnterTempExceeded
-    - script.stop: EnterStartDefrosting
-    - script.stop: EnterHeatingMinTime
     - switch.turn_off: gpio_relay
-
     - lambda: !lambda |-
         id(G_state) = ST_DEFROSTING_STARTED;
         id(G_state_time_passed) = false;
+    - script.execute: stop_inactive_states
 
-    - delay: 30min
+    - delay: !lambda "return RELAY_OFF_TIME * 60000;"
     - lambda: !lambda |-
         id(G_state_time_passed) = true;
 
-
+######### ST_HEATING_MIN_TIME #########
   - id: EnterHeatingMinTime
     mode: single
     then:
     #Stop other state scripts
-    - script.stop: EnterIdle
-    - script.stop: EnterTempExceeded
-    - script.stop: EnterStartDefrosting
-    - script.stop: EnterDefrostingStarted
     - switch.turn_on: gpio_relay
     - lambda: !lambda |-
         id(G_state) = ST_HEATING_MIN_TIME;
         id(G_state_time_passed) = false;
+    - script.execute: stop_inactive_states
 
-    - delay: 20min
+    - delay: !lambda "return (MIN_HEATING_TIME - RELAY_OFF_TIME)* 60000;"
     - lambda: !lambda |-
         id(G_state_time_passed) = true;
 
 # ------------------------------------------------------
+
+# Cript to ensure that only one state machine state is running
+  - id: stop_inactive_states
+    mode: single
+    then:
+    - lambda: !lambda |-
+        if(id(G_state) != ST_IDLE)               id(EnterIdle).stop();
+        if(id(G_state) != ST_TEMP_EXCEEDED)      id(EnterTempExceeded).stop();
+        if(id(G_state) != ST_START_DEFROSTING)   id(EnterStartDefrosting).stop();
+        if(id(G_state) != ST_DEFROSTING_STARTED) id(EnterDefrostingStarted).stop();
+        if(id(G_state) != ST_HEATING_MIN_TIME)   id(EnterHeatingMinTime).stop();
+
     
 # scipt for forced defrosting
 # forced defrosting prevents oil to accumulate to some places in device, preventing compressor to get oiled during it's running 
   - id: schedule_forced_defrosting
     mode: restart #timer will be restarted from the beginning allways when called --> starts always again           
     then:
-    - delay: 150min
+    - delay: !lambda "return MAX_HEATING_TIME * 60000;"
     - script.execute: EnterStartDefrosting
-
