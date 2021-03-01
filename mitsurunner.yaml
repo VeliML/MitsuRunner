@@ -82,8 +82,8 @@ sensor:
 
 # Logic to trigger defrosting when needed
   - platform: template
-    id: is_defrosting_needed
-    name: "Check if defrosting is needed"
+    id: state_machine
+    name: "Defrost state machine"
     update_interval: 30s
 # this C++ code checks if all requirements are fullfilled to trigger defrosting and triggers it then.
     lambda: !lambda |-
@@ -199,6 +199,9 @@ script:
     - script.stop: EnterHeatingMinTime
     - switch.turn_off: gpio_relay
 
+    - script.stop: schedule_forced_defrosting
+    - script.execute: schedule_forced_defrosting
+
     - lambda: !lambda |-
         id(G_state) = ST_START_DEFROSTING;
         id(G_state_time_passed) = false;
@@ -217,9 +220,6 @@ script:
     - script.stop: EnterStartDefrosting
     - script.stop: EnterHeatingMinTime
     - switch.turn_off: gpio_relay
-
-    - script.stop: schedule_forced_defrosting
-    - script.execute: schedule_forced_defrosting
 
     - lambda: !lambda |-
         id(G_state) = ST_DEFROSTING_STARTED;
