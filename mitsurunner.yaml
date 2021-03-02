@@ -35,6 +35,12 @@ globals:
   - id: G_TOPIC_DELTA
     type: const char*
     initial_value: $topic_delta
+  - id: G_TOPIC_IS_EXCESS_MIN_TIME_PASSED
+    type: const char*
+    initial_value: $topic_is_excess_min_time_passed
+  - id: G_TOPIC_IS_HEATING_MIN_TIME_PASSED
+    type: const char*
+    initial_value: $topic_is_heating_min_time_passed
 
 # dallas DS28B20 sensor
 # device measures temperature in 10 seconds interval
@@ -153,14 +159,11 @@ sensor:
                 break;
 
             case ST_HEATING_MIN_TIME:
-                // Max time should never pass in this state, but checked here to be sure.
-                if (id(G_max_heating_time_passed)) {
+                // If the max heating time is passed (should not happen in this state)
+                // or the upper temperature limit is exceeded, start defrosting directly.
+                if (id(G_max_heating_time_passed) || temperature_delta >= TEMPERATURE_DELTA_TO_FORCE_DEFROST) {
                     id(enter_StartDefrosting).execute();
                 } 
-                // If the upper temperature limit is exceeded, start defrosting directly.
-                else if (temperature_delta >= TEMPERATURE_DELTA_TO_FORCE_DEFROST) {
-                    id(enter_StartDefrosting).execute();
-                }
                 // Do not react normal temperature delta threshold before min heating time has been passed.
                 else if (id(G_state_time_passed)) {
                     id(enter_Idle).execute();
@@ -196,6 +199,8 @@ script:
     - switch.turn_on: gpio_relay
     - lambda: !lambda |-
         id(G_state) = ST_IDLE;
+        id(mqtt_client).publish(id(G_TOPIC_IS_EXCESS_MIN_TIME_PASSED), to_string(0.0));
+        id(mqtt_client).publish(id(G_TOPIC_IS_HEATING_MIN_TIME_PASSED), to_string(1.0));
 
 ########## ST_TEMP_EXCEEDED ###########
   - id: enter_TempExceeded
@@ -204,6 +209,7 @@ script:
     - switch.turn_on: gpio_relay
     - lambda: !lambda |-
         id(G_state) = ST_TEMP_EXCEEDED;
+        id(mqtt_client).publish(id(G_TOPIC_IS_EXCESS_MIN_TIME_PASSED), to_string(0.5));
         id(G_state_timer) = TEMPERATURE_DELTA_EXCESS_TIME * 60000;
     - script.execute: start_state_timer
 
@@ -214,6 +220,7 @@ script:
     - switch.turn_off: gpio_relay
     - lambda: !lambda |-
         id(G_state) = ST_START_DEFROSTING;
+        id(mqtt_client).publish(id(G_TOPIC_IS_EXCESS_MIN_TIME_PASSED), to_string(1.0));
         id(G_state_timer) =  DEFROST_TIMEOUT * 60000;
     - script.execute: start_state_timer
     - script.execute: schedule_forced_defrosting
@@ -235,6 +242,7 @@ script:
     - switch.turn_on: gpio_relay
     - lambda: !lambda |-
         id(G_state) = ST_HEATING_MIN_TIME;
+        id(mqtt_client).publish(id(G_TOPIC_IS_HEATING_MIN_TIME_PASSED), to_string(0.0));
         id(G_state_timer) =  (MIN_HEATING_TIME - RELAY_OFF_TIME) * 60000;
     - script.execute: start_state_timer
 
