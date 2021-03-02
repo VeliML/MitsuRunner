@@ -221,7 +221,7 @@ script:
     - lambda: !lambda |-
         id(G_state) = ST_START_DEFROSTING;
         id(mqtt_client).publish(id(G_TOPIC_IS_EXCESS_MIN_TIME_PASSED), to_string(1.0));
-        id(G_state_timer) =  DEFROST_TIMEOUT * 60000;
+        id(G_state_timer) = DEFROST_TIMEOUT * 60000;
     - script.execute: start_state_timer
     - script.execute: schedule_forced_defrosting
 
@@ -242,8 +242,9 @@ script:
     - switch.turn_on: gpio_relay
     - lambda: !lambda |-
         id(G_state) = ST_HEATING_MIN_TIME;
+        id(mqtt_client).publish(id(G_TOPIC_IS_EXCESS_MIN_TIME_PASSED), to_string(0.0));
         id(mqtt_client).publish(id(G_TOPIC_IS_HEATING_MIN_TIME_PASSED), to_string(0.0));
-        id(G_state_timer) =  (MIN_HEATING_TIME - RELAY_OFF_TIME) * 60000;
+        id(G_state_timer) = (MIN_HEATING_TIME - RELAY_OFF_TIME) * 60000;
     - script.execute: start_state_timer
 
 # ------------------------------------------------------
