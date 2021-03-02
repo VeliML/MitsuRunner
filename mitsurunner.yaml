@@ -109,7 +109,7 @@ sensor:
                 // Wait first that sensors has read some values.
                 if (G_state_time_passed) {
                     // If defrosting is going on
-                    if (temperature_delta < 0.0) {
+                    if (temperature_delta <= 0.0) {
                         id(enter_DefrostingStarted).execute();
                     }
                     else {
