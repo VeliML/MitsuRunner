@@ -90,7 +90,8 @@ sensor:
 # State machine to trigger defrosting when needed
   - platform: template
     id: state_machine
-    name: "Temperature delta"
+    name: "Defrost state machine"
+    state_topic: $topic_delta
     update_interval: 30s
 # This C++ code checks if all requirements are fullfilled to trigger defrosting and triggers it then.
     lambda: !lambda |-

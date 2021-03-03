@@ -45,6 +45,7 @@ substitutions:
 # MQTT topics. These are inside single quotes:
   topic_heatexchanger:      'pub/xxx/xxx/xxx/temperature' #if you will use IOT guru, please uncomment and update this to get graphs working
   topic_outdoor:            'pub/xxx/xxx/xxx/temperature' #if you will use IOT guru, please uncomment and update this to get graphs working
+  topic_delta:              'pub/xxx/xxx/xxx/delta'
 
 # MQTT topics. Notice that these are inside both single and double quotes:
   topic_state:                      '"pub/xxx/xxx/xxx/state"'
