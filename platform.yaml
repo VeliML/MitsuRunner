@@ -47,7 +47,6 @@ substitutions:
   topic_outdoor:            'pub/xxx/xxx/xxx/temperature' #if you will use IOT guru, please uncomment and update this to get graphs working
 
 # MQTT topics. Notice that these are inside both single and double quotes:
-  topic_delta:                      '"pub/xxx/xxx/xxx/delta"'
   topic_state:                      '"pub/xxx/xxx/xxx/state"'
   topic_is_excess_min_time_passed:  '"pub/xxx/xxx/xxx/excess_min_time"'
   topic_is_heating_min_time_passed: '"pub/xxx/xxx/xxx/heating_min_time"'

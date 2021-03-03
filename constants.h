@@ -2,7 +2,8 @@
 #define __CONSTANTS_H__
 
 /* Temperature threshold that has to be exceed long enough to start defrosting. */
-const float TEMPERATURE_DELTA_TO_DEFROST = 4.0;
+/* NOT USED */
+/* const float TEMPERATURE_DELTA_TO_DEFROST = 4.0; */
 
 /* Temperature threshold that triggers defrosting even though
  * MIN_HEATING_TIME would not be passed. */

@@ -32,9 +32,6 @@ globals:
   - id: G_TOPIC_STATE
     type: const char*
     initial_value: $topic_state
-  - id: G_TOPIC_DELTA
-    type: const char*
-    initial_value: $topic_delta
   - id: G_TOPIC_IS_EXCESS_MIN_TIME_PASSED
     type: const char*
     initial_value: $topic_is_excess_min_time_passed
@@ -93,13 +90,12 @@ sensor:
 # State machine to trigger defrosting when needed
   - platform: template
     id: state_machine
-    name: "Defrost state machine"
+    name: "Temperature delta"
     update_interval: 30s
 # This C++ code checks if all requirements are fullfilled to trigger defrosting and triggers it then.
     lambda: !lambda |-
         float temperature_delta = (id(outdoor_temp).state - id(heat_exchanger_temp).state);
 
-        id(mqtt_client).publish(id(G_TOPIC_DELTA), to_string(temperature_delta));
         id(mqtt_client).publish(id(G_TOPIC_STATE), to_string(id(G_state)));
 
         switch(id(G_state)) {
@@ -131,8 +127,7 @@ sensor:
 
             case ST_TEMP_EXCEEDED:
                 // If the time threshold or the upper temperature limit is exceeded, start defrosting
-                if (id(G_state_time_passed) || id(G_max_heating_time_passed) ||
-                        (temperature_delta >= TEMPERATURE_DELTA_TO_FORCE_DEFROST)) {
+                if (id(G_state_time_passed) || id(G_max_heating_time_passed)) {
                     id(enter_StartDefrosting).execute();
                 }
                 else if (temperature_delta < TEMPERATURE_DELTA_TO_DEFROST) {
@@ -161,7 +156,7 @@ sensor:
             case ST_HEATING_MIN_TIME:
                 // If the max heating time is passed (should not happen in this state)
                 // or the upper temperature limit is exceeded, start defrosting directly.
-                if (id(G_max_heating_time_passed) || temperature_delta >= TEMPERATURE_DELTA_TO_FORCE_DEFROST) {
+                if (id(G_max_heating_time_passed)) {
                     id(enter_StartDefrosting).execute();
                 } 
                 // Do not react normal temperature delta threshold before min heating time has been passed.
@@ -232,6 +227,7 @@ script:
     - switch.turn_off: gpio_relay
     - lambda: !lambda |-
         id(G_state) = ST_DEFROSTING_STARTED;
+        id(mqtt_client).publish(id(G_TOPIC_IS_HEATING_MIN_TIME_PASSED), to_string(0.0));
         id(G_state_timer) =  RELAY_OFF_TIME * 60000;
     - script.execute: start_state_timer
 
@@ -243,7 +239,6 @@ script:
     - lambda: !lambda |-
         id(G_state) = ST_HEATING_MIN_TIME;
         id(mqtt_client).publish(id(G_TOPIC_IS_EXCESS_MIN_TIME_PASSED), to_string(0.0));
-        id(mqtt_client).publish(id(G_TOPIC_IS_HEATING_MIN_TIME_PASSED), to_string(0.0));
         id(G_state_timer) = (MIN_HEATING_TIME - RELAY_OFF_TIME) * 60000;
     - script.execute: start_state_timer
 
