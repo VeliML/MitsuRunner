@@ -33,7 +33,7 @@ const float TEMPERATURE_DELTA_TO_DEFROST = 4.0;
  
 /* Delay at the device bootup before starting the state machine to give 
  * time for the sensors to be read, system to connect to wifi and system to connect to MQTT broker */
-#define INITIALIZE_DELAY                1  /* minutes*/
+#define INITIALIZE_DELAY                60  /* seconds*/
 
 
 

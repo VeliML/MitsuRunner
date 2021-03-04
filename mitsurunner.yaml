@@ -201,7 +201,7 @@ script:
 ############## Initialize device in first boot ###############
   - id: initialize  
     then:
-    - delay: !lambda "return INITIALIZE_DELAY * 60000;" # Delay state machine start so that system can connect wifi & MQTT before starting logics
+    - delay: !lambda "return INITIALIZE_DELAY * 1000;" # Delay state machine start so that system can connect wifi & MQTT before starting logics
     - script.execute: enter_Reset
     
     
@@ -227,7 +227,7 @@ script:
         id(start_state_timer).stop();   
         id(G_previous_state) = id(G_state); 
         
-        id(G_timer_action) = to_string(ST_NOT_PASSED);
+        id(G_timer_action) = to_string(TMR_NOT_PASSED);
         id(report_timer_status).execute();  
         
         id(G_state) = ST_IDLE;
@@ -284,18 +284,18 @@ script:
     mode: restart
     then:
     - lambda: !lambda |-        
-        id(G_timer_action) = to_string(ST_NOT_PASSED);
+        id(G_timer_action) = to_string(TMR_NOT_PASSED);
         id(report_timer_status).execute();
         
         id(G_previous_state) = id(G_state);
         
-        id(G_timer_action) = to_string(ST_RUNNING);
+        id(G_timer_action) = to_string(TMR_RUNNING);
         id(report_timer_status).execute();
         
         id(G_state_time_passed) = false;             
     - delay: !lambda "return id(G_state_timer);"    
     - lambda: !lambda |-    
-        id(G_timer_action) = to_string(ST_PASSED);
+        id(G_timer_action) = to_string(TMR_PASSED);
         id(report_timer_status).execute();
         
         id(G_state_time_passed) = true;
@@ -341,10 +341,10 @@ script:
     mode: restart #timer will be restarted from the beginning allways when called --> starts always again           
     then:
     - lambda: !lambda |-
-        id(mqtt_client).publish(id(G_TOPIC_FORCE_DEFROST_TIMER_STATE), to_string(ST_NOT_PASSED)); // #To indicate restarts
-        id(mqtt_client).publish(id(G_TOPIC_FORCE_DEFROST_TIMER_STATE), to_string(ST_RUNNING));
+        id(mqtt_client).publish(id(G_TOPIC_FORCE_DEFROST_TIMER_STATE), to_string(TMR_NOT_PASSED)); // #To indicate restarts
+        id(mqtt_client).publish(id(G_TOPIC_FORCE_DEFROST_TIMER_STATE), to_string(TMR_RUNNING));
         id(G_max_heating_time_passed) = false;
     - delay: !lambda "return MAX_HEATING_TIME * 60000;"
     - lambda: !lambda |-
-        id(mqtt_client).publish(id(G_TOPIC_FORCE_DEFROST_TIMER_STATE), to_string(ST_PASSED)); 
+        id(mqtt_client).publish(id(G_TOPIC_FORCE_DEFROST_TIMER_STATE), to_string(TMR_PASSED)); 
         id(G_max_heating_time_passed) = true;

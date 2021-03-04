@@ -11,11 +11,11 @@ enum State
 	ST_HEATING_MIN_TIME = -1,
 };
 
-enum State_Timers
+enum Timer_Status
 {
-	ST_NOT_PASSED = 0,
-	ST_RUNNING = 1,
-	ST_PASSED = 2,
+	TMR_NOT_PASSED = 0,
+	TMR_RUNNING = 1,
+	TMR_PASSED = 2,
 };
 
 #endif /* #define __STATE_H__ */
