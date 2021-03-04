@@ -6,9 +6,9 @@ esphome:
   platform: $platform_type
   board: $board_type
   on_boot: 
-  - switch.turn_on: gpio_relay
+  - switch.turn_off: gpio_relay
   - script.execute: schedule_forced_defrosting
-  - script.execute: enter_Reset
+  - script.execute: initialize
   includes:
     - constants.h
     - state.h
@@ -21,23 +21,45 @@ globals:
   - id: G_state #variable containing state machine state
     type: int
     initial_value: 'ST_RESET'
+  - id: G_previous_state #variable containing previous state machine state - used for debugging
+    type: int
+    initial_value: 'ST_RESET'
   - id: G_state_time_passed #for state machine timeouts etc.
     type: bool
     initial_value: 'false'
   - id: G_state_timer #for state machine timeouts etc.
     type: int
     initial_value: '0'
+  - id: G_timer_action
+    type: std::string 
+    initial_value: ""
 
 # global constants
   - id: G_TOPIC_STATE
     type: const char*
     initial_value: $topic_state
-  - id: G_TOPIC_IS_EXCESS_MIN_TIME_PASSED
+  - id: G_TOPIC_EXCESS_TIMER_STATE
     type: const char*
-    initial_value: $topic_is_excess_min_time_passed
-  - id: G_TOPIC_IS_HEATING_MIN_TIME_PASSED
+    initial_value: $topic_excess_timer_state
+  - id: G_TOPIC_MIN_HEATING_TIMER_STATE
     type: const char*
-    initial_value: $topic_is_heating_min_time_passed
+    initial_value: $topic_min_heating_timer_state
+  - id: G_TOPIC_DEFROSTING_TIMER_STATE
+    type: const char*
+    initial_value: $topic_defrosting_timer_state  
+  - id: G_TOPIC_START_DEFROSTING_TIMER_STATE
+    type: const char*
+    initial_value: $topic_start_defrosting_timer_state
+  - id: G_TOPIC_FORCE_DEFROST_TIMER_STATE
+    type: const char*
+    initial_value: $topic_force_defrost_timer_state
+  - id: G_TOPIC_RESET_TIMER_STATE
+    type: const char*
+    initial_value: $topic_reset_timer_state
+  - id: G_TOPIC_ERROR
+    type: const char*
+    initial_value: $topic_error
+
 
 # dallas DS28B20 sensor
 # device measures temperature in 10 seconds interval
@@ -137,13 +159,13 @@ sensor:
                 break;
 
             case ST_START_DEFROSTING:
-                // Check that defrosting is really started.
-                if (temperature_delta < 0.0) {
-                    id(enter_DefrostingStarted).execute();
-                }
                 // Timeout to go back to the idle state, if defrosting has not been started.
-                else if (id(G_state_time_passed)) {
+                if (id(G_state_time_passed)) {
                     id(enter_Idle).execute();
+                }
+                // Check that defrosting is really started.
+                else if (temperature_delta < 0.0) {
+                    id(enter_DefrostingStarted).execute();
                 }
                 break;
 
@@ -155,15 +177,16 @@ sensor:
                 break;
 
             case ST_HEATING_MIN_TIME:
-                // If the max heating time is passed (should not happen in this state)
-                // or the upper temperature limit is exceeded, start defrosting directly.
-                if (id(G_max_heating_time_passed)) {
-                    id(enter_StartDefrosting).execute();
-                } 
                 // Do not react normal temperature delta threshold before min heating time has been passed.
-                else if (id(G_state_time_passed)) {
+                if (id(G_state_time_passed)) {
                     id(enter_Idle).execute();
                 }
+                // If the max heating time is passed (should not happen in this state)
+                // or the upper temperature limit is exceeded, start defrosting directly.
+                else if (id(G_max_heating_time_passed)) {
+                    id(enter_StartDefrosting).execute();
+                } 
+
                 break;
 
             // Should never end up in here
@@ -175,17 +198,24 @@ sensor:
 
 script:
 
+############## Initialize device in first boot ###############
+  - id: initialize  
+    then:
+    - delay: !lambda "return INITIALIZE_DELAY * 1000;" # Delay state machine start so that system can connect wifi & MQTT before starting logics
+    - script.execute: enter_Reset
+    
+    
 # -------- State machine state entrance scripts --------
-
-
+  
 ############## ST_RESET ###############
   - id: enter_Reset
     mode: single
     then:
     - switch.turn_off: gpio_relay
     - lambda: !lambda |-
+        id(G_previous_state) = id(G_state);
         id(G_state) = ST_RESET;
-        id(G_state_timer) = RESET_SENSOR_DELAY_SEC * 1000;
+        id(G_state_timer) = RESET_SENSOR_DELAY * 1000; //seconds
     - script.execute: start_state_timer
 
 ############### ST_IDLE ###############
@@ -194,9 +224,13 @@ script:
     then:
     - switch.turn_on: gpio_relay
     - lambda: !lambda |-
+        id(start_state_timer).stop();   
+        id(G_previous_state) = id(G_state); 
+        
+        id(G_timer_action) = to_string(TMR_NOT_PASSED);
+        id(report_timer_status).execute();  
+        
         id(G_state) = ST_IDLE;
-        id(mqtt_client).publish(id(G_TOPIC_IS_EXCESS_MIN_TIME_PASSED), to_string(0.0));
-        id(mqtt_client).publish(id(G_TOPIC_IS_HEATING_MIN_TIME_PASSED), to_string(1.0));
 
 ########## ST_TEMP_EXCEEDED ###########
   - id: enter_TempExceeded
@@ -204,8 +238,8 @@ script:
     then:
     - switch.turn_on: gpio_relay
     - lambda: !lambda |-
+        id(G_previous_state) = id(G_state);
         id(G_state) = ST_TEMP_EXCEEDED;
-        id(mqtt_client).publish(id(G_TOPIC_IS_EXCESS_MIN_TIME_PASSED), to_string(0.5));
         id(G_state_timer) = TEMPERATURE_DELTA_EXCESS_TIME * 60000;
     - script.execute: start_state_timer
 
@@ -215,8 +249,8 @@ script:
     then:
     - switch.turn_off: gpio_relay
     - lambda: !lambda |-
+        id(G_previous_state) = id(G_state);
         id(G_state) = ST_START_DEFROSTING;
-        id(mqtt_client).publish(id(G_TOPIC_IS_EXCESS_MIN_TIME_PASSED), to_string(1.0));
         id(G_state_timer) = DEFROST_TIMEOUT * 60000;
     - script.execute: start_state_timer
     - script.execute: schedule_forced_defrosting
@@ -227,8 +261,8 @@ script:
     then:
     - switch.turn_off: gpio_relay
     - lambda: !lambda |-
+        id(G_previous_state) = id(G_state);
         id(G_state) = ST_DEFROSTING_STARTED;
-        id(mqtt_client).publish(id(G_TOPIC_IS_HEATING_MIN_TIME_PASSED), to_string(0.0));
         id(G_state_timer) =  RELAY_OFF_TIME * 60000;
     - script.execute: start_state_timer
 
@@ -238,8 +272,8 @@ script:
     then:
     - switch.turn_on: gpio_relay
     - lambda: !lambda |-
+        id(G_previous_state) = id(G_state);
         id(G_state) = ST_HEATING_MIN_TIME;
-        id(mqtt_client).publish(id(G_TOPIC_IS_EXCESS_MIN_TIME_PASSED), to_string(0.0));
         id(G_state_timer) = (MIN_HEATING_TIME - RELAY_OFF_TIME) * 60000;
     - script.execute: start_state_timer
 
@@ -249,11 +283,56 @@ script:
   - id: start_state_timer
     mode: restart
     then:
-    - lambda: !lambda |-
-        id(G_state_time_passed) = false;
-    - delay: !lambda "return id(G_state_timer);"
-    - lambda: !lambda |-
+    - lambda: !lambda |-        
+        id(G_timer_action) = to_string(TMR_NOT_PASSED);
+        id(report_timer_status).execute();
+        
+        id(G_previous_state) = id(G_state);
+        
+        id(G_timer_action) = to_string(TMR_RUNNING);
+        id(report_timer_status).execute();
+        
+        id(G_state_time_passed) = false;             
+    - delay: !lambda "return id(G_state_timer);"    
+    - lambda: !lambda |-    
+        id(G_timer_action) = to_string(TMR_PASSED);
+        id(report_timer_status).execute();
+        
         id(G_state_time_passed) = true;
+        
+############### REPORT_TIMER_STATUS ###############
+  - id: report_timer_status
+    then:
+    - lambda: !lambda |-
+        const char* id_timer_topic = id(G_TOPIC_ERROR);    
+        bool send_message = true;
+        switch(id(G_previous_state)) {
+            case ST_HEATING_MIN_TIME:
+                id_timer_topic = id(G_TOPIC_MIN_HEATING_TIMER_STATE);
+                break;
+            case ST_DEFROSTING_STARTED:
+                id_timer_topic = id(G_TOPIC_DEFROSTING_TIMER_STATE);
+                break;
+            case ST_START_DEFROSTING:
+                id_timer_topic = id(G_TOPIC_START_DEFROSTING_TIMER_STATE);
+                break;
+            case ST_TEMP_EXCEEDED:
+                id_timer_topic = id(G_TOPIC_EXCESS_TIMER_STATE);
+                break;
+            case ST_RESET:
+                id_timer_topic = id(G_TOPIC_RESET_TIMER_STATE);
+                break;
+            case ST_IDLE:
+                send_message = false;
+                break;
+            default:
+                break; 
+        }   
+        
+        if ( send_message ) {
+            id(mqtt_client).publish(id_timer_topic, id(G_timer_action));
+        }
+
     
 # Script for forced defrosting
 # Forced defrosting prevents oil to accumulate to some places in device, 
@@ -262,7 +341,10 @@ script:
     mode: restart #timer will be restarted from the beginning allways when called --> starts always again           
     then:
     - lambda: !lambda |-
+        id(mqtt_client).publish(id(G_TOPIC_FORCE_DEFROST_TIMER_STATE), to_string(TMR_NOT_PASSED)); // #To indicate restarts
+        id(mqtt_client).publish(id(G_TOPIC_FORCE_DEFROST_TIMER_STATE), to_string(TMR_RUNNING));
         id(G_max_heating_time_passed) = false;
     - delay: !lambda "return MAX_HEATING_TIME * 60000;"
     - lambda: !lambda |-
+        id(mqtt_client).publish(id(G_TOPIC_FORCE_DEFROST_TIMER_STATE), to_string(TMR_PASSED)); 
         id(G_max_heating_time_passed) = true;

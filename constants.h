@@ -27,9 +27,13 @@ const float TEMPERATURE_DELTA_TO_DEFROST = 4.0;
    state will be set back to IDLE inetead of DEFROSTING STARTED */
 #define DEFROST_TIMEOUT                 10  /* minutes */
 
-/* Delay at the reset before startting the state machine to give 
- * time for the sensors to be read. */
-#define RESET_SENSOR_DELAY_SEC          25  /* seconds*/
+/* Delay at the reset before allowing state machine to step to next states 
+ * Gives time for the sensors to be reads*/
+#define RESET_SENSOR_DELAY				25 /* seconds */
+ 
+/* Delay at the device bootup before starting the state machine to give 
+ * time for the sensors to be read, system to connect to wifi and system to connect to MQTT broker */
+#define INITIALIZE_DELAY                60  /* seconds*/
 
 
 
