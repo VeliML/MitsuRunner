@@ -118,7 +118,7 @@ sensor:
 # This C++ code checks if all requirements are fullfilled to trigger defrosting and triggers it then.
     lambda: !lambda |-
         float temperature_delta = (id(outdoor_temp).state - id(heat_exchanger_temp).state);
-        bool isisDefrostingOngoing = (temperature_delta <=0 )? true:false;
+        bool isDefrostingOngoing = (temperature_delta <=0 )? true:false;
         id(mqtt_client).publish(id(G_TOPIC_STATE), to_string(id(G_state)));
 
         switch(id(G_state)) {
@@ -128,7 +128,7 @@ sensor:
                 // Wait first that sensors has read some values.
                 if (G_state_time_passed) {
                     // If defrosting is going on
-                    if (isisDefrostingOngoing) {
+                    if (isDefrostingOngoing) {
                         id(enter_DefrostingStarted).execute();
                     }
                     else {
