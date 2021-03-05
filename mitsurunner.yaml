@@ -253,7 +253,6 @@ script:
         id(G_state) = ST_START_DEFROSTING;
         id(G_state_timer) = DEFROST_TIMEOUT * 60000;
     - script.execute: start_state_timer
-    - script.execute: schedule_forced_defrosting
 
 ######## ST_DEFROSTING_STARTED ########
   - id: enter_DefrostingStarted
@@ -263,7 +262,8 @@ script:
     - lambda: !lambda |-
         id(G_previous_state) = id(G_state);
         id(G_state) = ST_DEFROSTING_STARTED;
-        id(G_state_timer) =  RELAY_OFF_TIME * 60000;
+        id(G_state_timer) =  RELAY_OFF_TIME * 60000;        
+    - script.execute: schedule_forced_defrosting
     - script.execute: start_state_timer
 
 ######### ST_HEATING_MIN_TIME #########
