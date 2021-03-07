@@ -1,5 +1,6 @@
 <<: !include platform.yaml
 
+
 # initialize and define mitsurunner
 esphome:
   name: mitsurunner
@@ -33,6 +34,10 @@ globals:
   - id: G_timer_action
     type: std::string 
     initial_value: ""
+  - id: G_outdoor_temp_filtered
+    type: float
+    initial_value: '0.0'
+
 
 # global constants
   - id: G_TOPIC_STATE
@@ -59,13 +64,17 @@ globals:
   - id: G_TOPIC_ERROR
     type: const char*
     initial_value: $topic_error
+  - id: G_TOPIC_OUTDOOR_TEMPERATURE_RAW
+    type: const char*
+    initial_value: $topic_outdoor_raw
+
 
 
 # dallas DS28B20 sensor
 # device measures temperature in 10 seconds interval
 dallas:
   - pin: $dallas_pin
-    update_interval: 10s
+    update_interval: 5s
     id: dallas1
 
 # switch component to control defrost prevention relay
@@ -89,6 +98,10 @@ sensor:
     state_topic: $topic_heatexchanger
     filters:    
       - filter_out: nan
+      - exponential_moving_average:
+          alpha: 0.05
+          send_every: 6 #30s
+
   - platform: dallas
     address: $dallas_address_outdoor_temp # Please remember to define this on platform.yaml
     name: "outdoor temperature"
@@ -97,6 +110,25 @@ sensor:
     state_topic: $topic_outdoor
     filters:
       - filter_out: nan
+      - sliding_window_moving_average:
+          window_size: 360  #30min
+          send_every: 6     #30s
+          send_first_at: 2  #10s
+    on_raw_value:
+      then:
+        lambda: !lambda |-
+            // G_exponential moving average stored in G_outdoor_temp_filtered
+            static const float lambda = 0.1;
+            static bool first_time = 1;
+            if(first_time) {
+                if (!isnan(x)) {
+                  id(G_outdoor_temp_filtered) = x;
+                  first_time = 0;
+                }
+            }
+            else if (!isnan(x)) {
+                id(G_outdoor_temp_filtered) = id(G_outdoor_temp_filtered) * (1.0 - lambda) + x * lambda;
+            }
 
 # additional sensors can be added by defining new sensors - uncomment example below:
 # e.g. for having another sensors to measure outdoor temperature from different place. (not used by logic)
@@ -108,6 +140,11 @@ sensor:
   #   state_topic: $topic_test
   #   filters:
   #     - filter_out: nan
+  #     - exponential_moving_average:
+  #         alpha: 0.01
+  #         send_every: 2
+
+
 
 # State machine to trigger defrosting when needed
   - platform: template
@@ -117,9 +154,12 @@ sensor:
     update_interval: 30s
 # This C++ code checks if all requirements are fullfilled to trigger defrosting and triggers it then.
     lambda: !lambda |-
-        float temperature_delta = (id(outdoor_temp).state - id(heat_exchanger_temp).state);
+        float temperature_delta = (id(G_outdoor_temp_filtered) - id(heat_exchanger_temp).state);
 
         id(mqtt_client).publish(id(G_TOPIC_STATE), to_string(id(G_state)));
+        id(mqtt_client).publish(id(G_TOPIC_OUTDOOR_TEMPERATURE_RAW), to_string(id(outdoor_temp).raw_state));
+        id(mqtt_client).publish("ln25/sensor/temperature/out/inlet_flt", to_string(id(G_outdoor_temp_filtered)));
+        id(mqtt_client).publish("ln25/sensor/temperature/out/heatexc_raw", to_string(id(heat_exchanger_temp).raw_state));
 
         switch(id(G_state)) {
 
@@ -283,7 +323,7 @@ script:
   - id: start_state_timer
     mode: restart
     then:
-    - lambda: !lambda |-        
+    - lambda: !lambda |-
         id(G_timer_action) = to_string(TMR_NOT_PASSED);
         id(report_timer_status).execute();
         
@@ -294,7 +334,7 @@ script:
         
         id(G_state_time_passed) = false;             
     - delay: !lambda "return id(G_state_timer);"    
-    - lambda: !lambda |-    
+    - lambda: !lambda |-
         id(G_timer_action) = to_string(TMR_PASSED);
         id(report_timer_status).execute();
         
