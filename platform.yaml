@@ -14,6 +14,7 @@ wifi:
 ota:
   password: "password"
 
+# MQTT broker configuration
 mqtt:
   broker: 192.168.1.xxx 
   id: mqtt_client
@@ -23,7 +24,6 @@ mqtt:
 #mqtt message prefix, change this to what you want
   topic_prefix: msz_ln/temperature
 
-# MQTT broker configuration
 # In case of you are using IoT Guru (iotguru.io), uncomment and use data below.
 # You have to check correct values from your IoT Guru web service
 # broker: 195.201.219.208
