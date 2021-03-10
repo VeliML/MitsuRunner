@@ -13,13 +13,6 @@ wifi:
 # set your unique password to prevent hackers to modify your device
 ota:
   password: "password"
-  
-# MQTT broker configuration
-# In case of you are using IoT Guru (iotguru.io), uncomment and use data above. You have to check correct values from your IoT Guru web service
-# broker: 195.201.219.208
-# username: user short identifier
-# client_id: device short identifier
-# password: device key
 
 mqtt:
   broker: 192.168.1.xxx 
@@ -29,6 +22,14 @@ mqtt:
   password: change_this
 #mqtt message prefix, change this to what you want
   topic_prefix: msz_ln/temperature
+
+# MQTT broker configuration
+# In case of you are using IoT Guru (iotguru.io), uncomment and use data below.
+# You have to check correct values from your IoT Guru web service
+# broker: 195.201.219.208
+# username: user short identifier
+# client_id: device short identifier
+# password: device key
 
 # enable logging to terminal - you can get log messages over wifi
 logger:
