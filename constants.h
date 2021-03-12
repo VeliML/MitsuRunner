@@ -2,12 +2,16 @@
 #define __CONSTANTS_H__
 
 /* Temperature threshold that has to be exceed long enough to start defrosting. */
-const float TEMPERATURE_DELTA_TO_DEFROST = 4.0;
+const float TEMPERATURE_DELTA_TO_DEFROST = 5.0;
 
 /* Temperature threshold that triggers defrosting even though
  * MIN_HEATING_TIME would not be passed. */
 /* NOT USED */
 /* const float TEMPERATURE_DELTA_TO_FORCE_DEFROST = 10.0; */
+
+const float OUTDOOR_TEMPERATURE_TO_ENTER_OFF_STATE = 3.0;
+
+const float OUTDOOR_TEMPERATURE_TO_EXIT_OFF_STATE = 2.0;
 
 /* When temperature delta has been over the threshold 
  * (TEMPERATURE_DELTA_TO_DEFROST) this long, defrosting is started. */
@@ -15,7 +19,7 @@ const float TEMPERATURE_DELTA_TO_DEFROST = 4.0;
 
 /* When this time has been passed since last defrosting, 
  * forced defrosting will be started. */
-#define MAX_HEATING_TIME                150 /* minutes */
+#define MAX_HEATING_TIME                360 /* minutes */
 
 /* The minumum time between defrosting operations. */
 #define MIN_HEATING_TIME                50  /* minutes */
@@ -39,7 +43,11 @@ const float TEMPERATURE_DELTA_TO_DEFROST = 4.0;
 
 /* Sanity checks */
 #if MIN_HEATING_TIME < RELAY_OFF_TIME
-#error "MIN_HEATING_TIME cannot be smaller than RELAY_OFF_TIME"
+#error "MIN_HEATING_TIME < RELAY_OFF_TIME"
+#endif
+
+#if MAX_HEATING_TIME < MIN_HEATING_TIME
+#error "MAX_HEATING_TIME < MIN_HEATING_TIME"
 #endif
 
 #endif /* #define __CONSTANTS_H__ */
