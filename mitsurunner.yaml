@@ -193,6 +193,7 @@ sensor:
 
             case ST_OFF:
                 if(id(outdoor_temp).state < OUTDOOR_TEMPERATURE_TO_EXIT_OFF_STATE) {
+                    id(schedule_forced_defrosting).execute();
                     id(enter_Idle).execute();
                 }
                 break;
@@ -273,9 +274,10 @@ script:
     then:
     - switch.turn_off: gpio_relay
     - lambda: !lambda |-
+        id(start_state_timer).stop();
+        id(schedule_forced_defrosting).stop();
         id(G_previous_state) = id(G_state);
         id(G_state) = ST_OFF;
-    - script.execute: start_state_timer
 
 ############### ST_IDLE ###############
   - id: enter_Idle
@@ -283,7 +285,7 @@ script:
     then:
     - switch.turn_on: gpio_relay
     - lambda: !lambda |-
-        id(start_state_timer).stop();   
+        id(start_state_timer).stop();
         id(G_previous_state) = id(G_state); 
         
         id(G_timer_action) = to_string(TMR_NOT_PASSED);
@@ -385,7 +387,7 @@ script:
                 send_message = false;
                 break;
             default:
-                break; 
+                break;
         }   
         
         if ( send_message ) {
