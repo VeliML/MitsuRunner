@@ -155,8 +155,6 @@ sensor:
 
         id(mqtt_client).publish(id(G_TOPIC_STATE), to_string(id(G_state)));
         id(mqtt_client).publish(id(G_TOPIC_OUTDOOR_TEMPERATURE_RAW), to_string(id(outdoor_temp).raw_state));
-        id(mqtt_client).publish("ln25/sensor/temperature/out/inlet_flt", to_string(id(G_outdoor_temp_filtered)));
-        id(mqtt_client).publish("ln25/sensor/temperature/out/heatexc_raw", to_string(id(heat_exchanger_temp).raw_state));
 
         switch(id(G_state)) {
 

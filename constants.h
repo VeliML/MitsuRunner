@@ -19,7 +19,7 @@ const float OUTDOOR_TEMPERATURE_TO_EXIT_OFF_STATE = 2.0;
 
 /* When this time has been passed since last defrosting, 
  * forced defrosting will be started. */
-#define MAX_HEATING_TIME                360 /* minutes */
+#define MAX_HEATING_TIME                150 /* minutes */
 
 /* The minumum time between defrosting operations. */
 #define MIN_HEATING_TIME                50  /* minutes */
