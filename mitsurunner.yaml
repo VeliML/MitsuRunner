@@ -119,12 +119,12 @@ sensor:
             // Calculate exponential moving average for outdoor temperature
             // Alpha is adjustable, similar to one in the built-in exponential_moving_average filter
             static const float alpha = 0.1;
-            static bool first_time = 1;
+            static bool first_time = true;
             // Do not use filter until first real (not NaN) value received
             if(first_time) {
                 if (!isnan(x)) {
                   id(G_outdoor_temp_filtered) = x;
-                  first_time = 0;
+                  first_time = false;
                 }
             }
             else if (!isnan(x)) {
