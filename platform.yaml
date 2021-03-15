@@ -49,6 +49,7 @@ substitutions:
   topic_delta:              'pub/xxx/xxx/xxx/delta'
 
 # MQTT topics. Notice that these are inside both single and double quotes:
+  topic_outdoor_raw:                    '"pub/xxx/xxx/xxx/outdoor_raw"'
   topic_state:                          '"pub/xxx/xxx/xxx/state"'
   topic_excess_timer_state:             '"pub/xxx/xxx/xxx/excess_timer_state"'
   topic_min_heating_timer_state:        '"pub/xxx/xxx/xxx/min_heating_timer_state"'
