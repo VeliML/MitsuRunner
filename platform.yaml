@@ -9,7 +9,7 @@ wifi:
     subnet: 255.255.255.0
     gateway: 192.168.1.0
 
-# enalbes firmware updates over wifi 
+# enables firmware updates over wifi
 # set your unique password to prevent hackers to modify your device
 ota:
   password: "password"
@@ -44,21 +44,24 @@ substitutions:
   dallas_address_outdoor_temp:         '0x93000802B67D1E10'
 
 # MQTT topics. These are inside single quotes:
-  topic_heatexchanger:      'pub/xxx/xxx/xxx/temperature' #if you will use IOT guru, please uncomment and update this to get graphs working
-  topic_outdoor:            'pub/xxx/xxx/xxx/temperature' #if you will use IOT guru, please uncomment and update this to get graphs working
-  topic_delta:              'pub/xxx/xxx/xxx/delta'
+# in case of IoT Guru, rplace these parts with your own values: uuu = user_id, ccc = client_id, nnn = node_short_identifier
+# you can browse to the Help tab of a Field page's in iotguru.live and copy/paste the line under 'GENERIC MQTT TOPIC'
+# it should look like: "pub/qwertyuiop/asdfghjkl/zxcvbnm/temperature_delta"
+  topic_heatexchanger:      'pub/uuu/ccc/nnn/heatex_temperature'
+  topic_outdoor:            'pub/uuu/ccc/nnn/outdoor_temperature'
+  topic_delta:              'pub/uuu/ccc/nnn/temperature_delta'
 
 # MQTT topics. Notice that these are inside both single and double quotes:
-  topic_outdoor_raw:                    '"pub/xxx/xxx/xxx/outdoor_raw"'
-  topic_state:                          '"pub/xxx/xxx/xxx/state"'
-  topic_excess_timer_state:             '"pub/xxx/xxx/xxx/excess_timer_state"'
-  topic_min_heating_timer_state:        '"pub/xxx/xxx/xxx/min_heating_timer_state"'
-  topic_defrosting_timer_state:         '"pub/xxx/xxx/xxx/topic_defrosting_timer_state"'
-  topic_start_defrosting_timer_state:   '"pub/xxx/xxx/xxx/topic_start_defrosting_timer_state"'
-  topic_force_defrost_timer_state:      '"pub/xxx/xxx/xxx/force_defrost_timer_state"'
-  topic_reset_timer_state:              '"pub/xxx/xxx/xxx/reset_timer_state"'
-  topic_error:                          '"pub/xxx/xxx/xxx/error"'
+  topic_outdoor_raw:                    '"pub/uuu/ccc/nnn/outdoor_raw_temperature"'
+  topic_state:                          '"pub/uuu/ccc/nnn/state"'
+  topic_excess_timer_state:             '"pub/uuu/ccc/nnn/excess_timer_state"'
+  topic_min_heating_timer_state:        '"pub/uuu/ccc/nnn/min_heating_timer_state"'
+  topic_defrosting_timer_state:         '"pub/uuu/ccc/nnn/defrosting_timer_state"'
+  topic_start_defrosting_timer_state:   '"pub/uuu/ccc/nnn/start_defrosting_timer_state"'
+  topic_force_defrost_timer_state:      '"pub/uuu/ccc/nnn/force_defrost_timer_state"'
+  topic_reset_timer_state:              '"pub/uuu/ccc/nnn/reset_timer_state"'
+  topic_error:                          '"pub/uuu/ccc/nnn/error"'
 
 # IO-pins:
-  dallas_pin: 'D2' # pin for DS18B20 1-wire temperature sensors
+  dallas_pin: 'D7' # pin for DS18B20 1-wire temperature sensors, set to the pin number you are using
   relay_pin:  'D0' # pin for controlling relay
