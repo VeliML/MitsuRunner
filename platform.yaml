@@ -45,7 +45,7 @@ substitutions:
 
 # MQTT topics. These are inside single quotes:
 # in case of IoT Guru, rplace these parts with your own values: uuu = user_id, ccc = client_id, nnn = node_short_identifier
-# you can browse to the Help tab of a Field page's in iotguru.live and copy/paste the line under 'GENERIC MQTT TOPIC'
+# you can browse to the Help tab of a Field page in iotguru.live and copy/paste the line under 'GENERIC MQTT TOPIC'
 # it should look like: "pub/qwertyuiop/asdfghjkl/zxcvbnm/temperature_delta"
   topic_heatexchanger:      'pub/uuu/ccc/nnn/heatex_temperature'
   topic_outdoor:            'pub/uuu/ccc/nnn/outdoor_temperature'
