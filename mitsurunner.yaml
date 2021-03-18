@@ -168,7 +168,8 @@ sensor:
             case ST_RESET:
                 // Wait first that sensors has read some values.
                 if (G_state_time_passed) {
-                    if (id(outdoor_temp).state > OUTDOOR_TEMPERATURE_TO_ENTER_OFF_STATE) {
+                    if (id(heat_exchanger_temp).state > HEAT_EXCHANGER_MAX_TEMPERATURE ||
+                            id(outdoor_temp).state > OUTDOOR_TEMPERATURE_TO_ENTER_OFF_STATE) {
                         id(enter_Off).execute();
                     }
                     // If defrosting is going on
@@ -191,21 +192,23 @@ sensor:
                     id(enter_TempExceeded).execute();
                 }
                 // If outdoor temperature average exceeds the threshold, switch off the defrost hack logic
-                else if (id(outdoor_temp).state > OUTDOOR_TEMPERATURE_TO_ENTER_OFF_STATE) {
+                else if (id(heat_exchanger_temp).state > HEAT_EXCHANGER_MAX_TEMPERATURE ||
+                        id(outdoor_temp).state > OUTDOOR_TEMPERATURE_TO_ENTER_OFF_STATE) {
                     id(enter_Off).execute();
                 }
                 break;
 
             case ST_OFF:
                 // Enter normal defrost hack mode if outside temperature is low enough
-                if(id(outdoor_temp).state < OUTDOOR_TEMPERATURE_TO_EXIT_OFF_STATE) {
+                if(id(heat_exchanger_temp).state < HEAT_EXCHANGER_MAX_TEMPERATURE &&
+                        id(outdoor_temp).state < OUTDOOR_TEMPERATURE_TO_EXIT_OFF_STATE) {
                     id(schedule_forced_defrosting).execute();
                     id(enter_Idle).execute();
                 }
                 break;
 
             case ST_TEMP_EXCEEDED:
-                // If the time threshold or the upper temperature limit is exceeded, start defrosting
+                // If the time threshold is exceeded, start defrosting
                 if (id(G_state_time_passed) || id(G_max_heating_time_passed)) {
                     id(enter_StartDefrosting).execute();
                 }
