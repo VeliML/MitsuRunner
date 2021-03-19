@@ -4,14 +4,13 @@
 /* Temperature threshold that has to be exceed long enough to start defrosting. */
 const float TEMPERATURE_DELTA_TO_DEFROST = 5.0;
 
-/* Temperature threshold that triggers defrosting even though
- * MIN_HEATING_TIME would not be passed. */
-/* NOT USED */
-/* const float TEMPERATURE_DELTA_TO_FORCE_DEFROST = 10.0; */
-
+/* Outdoor temperature thresholds to switch on/off defrost hacking */
 const float OUTDOOR_TEMPERATURE_TO_ENTER_OFF_STATE = 3.0;
-
 const float OUTDOOR_TEMPERATURE_TO_EXIT_OFF_STATE = 2.0;
+
+/* Maximum heat exchanger temperature value to have defrost hacking on 
+ * This is checked on Reset, Idle and Off states only, not during defrosting */
+const float HEAT_EXCHANGER_MAX_TEMPERATURE = 50.0;
 
 /* When temperature delta has been over the threshold 
  * (TEMPERATURE_DELTA_TO_DEFROST) this long, defrosting is started. */
@@ -33,12 +32,11 @@ const float OUTDOOR_TEMPERATURE_TO_EXIT_OFF_STATE = 2.0;
 
 /* Delay at the reset before allowing state machine to step to next states 
  * Gives time for the sensors to be reads*/
-#define RESET_SENSOR_DELAY				25 /* seconds */
+#define RESET_SENSOR_DELAY				25  /* seconds */
  
 /* Delay at the device bootup before starting the state machine to give 
  * time for the sensors to be read, system to connect to wifi and system to connect to MQTT broker */
 #define INITIALIZE_DELAY                60  /* seconds*/
-
 
 
 /* Sanity checks */
