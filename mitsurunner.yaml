@@ -68,7 +68,7 @@ globals:
     initial_value: $topic_outdoor_raw
 
 
-# Dallas DS18B20 temperature sensor and it's update/measurement interval
+# Temperature sensor (Dallas DS18B20) and its update/measurement interval
 dallas:
   - pin: $dallas_pin
     update_interval: 5s
@@ -83,9 +83,9 @@ switch:
     name: "Defrost prevention control"
     id: gpio_relay
 
-# Dallas DS18B20 temperature sensor details. 
-# you need to check IDs of temperature sensors by starting this SW and checking IDs from log printing to terminal. 
-# After checked, copy IDs to platform.yaml file and heat another sensor. Then check which sensor it was and use it for the appropriate topic
+# Temperature sensor (Dallas DS18B20) details. 
+# You need to check temperature sensors IDs by starting this software and checking IDs from log printing to terminal. 
+# Copy IDs from terminal log to platform.yaml file and heat one sensor. Then check which sensor it was and use it for the corresponding topic
 sensor:
   - platform: dallas
     address: $dallas_address_heat_exchanger_temp # Remember to define this on platform.yaml
