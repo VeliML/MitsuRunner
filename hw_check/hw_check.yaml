@@ -3,7 +3,7 @@
 # Switches relay: 1sec on, 4sec off
 
 esphome:
-  name: Mitsurunner HW check  
+  name: mitsurunner-hw-check  
 # HW-platform
   platform: esp8266
   board: d1_mini
