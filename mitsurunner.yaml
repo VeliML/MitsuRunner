@@ -183,18 +183,18 @@ sensor:
                 break;
 
             case ST_IDLE:
+                // If outdoor temperature average exceeds the threshold, switch off the defrost hack logic
+                if (id(heat_exchanger_temp).state > HEAT_EXCHANGER_MAX_TEMPERATURE ||
+                        id(outdoor_temp).state > OUTDOOR_TEMPERATURE_TO_ENTER_OFF_STATE) {
+                    id(enter_Off).execute();
+                }
                 // If maximum heating time exceeded, start defrosting immediately
-                if (id(G_max_heating_time_passed)) {
+                else if (id(G_max_heating_time_passed)) {
                     id(enter_StartDefrosting).execute();
                 }
                 // Wait for the temperature delta threshold to be exceeded.
                 else if (temperature_delta >= TEMPERATURE_DELTA_TO_DEFROST) {
                     id(enter_TempExceeded).execute();
-                }
-                // If outdoor temperature average exceeds the threshold, switch off the defrost hack logic
-                else if (id(heat_exchanger_temp).state > HEAT_EXCHANGER_MAX_TEMPERATURE ||
-                        id(outdoor_temp).state > OUTDOOR_TEMPERATURE_TO_ENTER_OFF_STATE) {
-                    id(enter_Off).execute();
                 }
                 break;
 
