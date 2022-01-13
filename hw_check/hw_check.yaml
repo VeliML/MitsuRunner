@@ -1,0 +1,54 @@
+# For Mitsurunnwer HW-verification
+# Shows IDs of connected Dallas sensors
+# Switches relay: 1sec on, 4sec off
+
+esphome:
+  name: mitsurunner_hw_check  
+# HW-platform
+  platform: esp8266
+  board: d1_mini
+
+wifi:
+# Set your WiFi parameters
+  ssid: "xxxxxxxx"
+  password: "yyyyyyyy"
+
+  manual_ip:
+# Mitsurunner's IP address
+    static_ip: 192.168.1.100 
+    subnet: 255.255.255.0
+    gateway: 192.168.1.1
+
+# Logs on
+logger:
+
+# OtA-update password
+ota:
+  password: "zzzzzzzz"
+
+# Dallas PIN, change PIN if needed
+dallas:
+  - pin: D5
+    update_interval: 10s
+    id: dallas1
+
+# Relay PIN
+switch:
+  - platform: gpio
+    pin: D1
+    name: "rele"
+    id: gpio_rele
+
+status_led:
+  pin:
+    number: D4
+    inverted: True
+
+# Turn relay ON/OFF
+interval:
+  - interval: 5s
+
+    then:
+      - switch.turn_on: gpio_rele
+      - delay: 0.5s
+      - switch.turn_off: gpio_rele
