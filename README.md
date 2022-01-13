@@ -18,8 +18,7 @@ This is due to poor "fuzzy logic" algorithm which:
 - 1 relay compatible with controller, for example Wemos D1 mini relay shield
 - 2 waterproof DS18B20 temperature sensors
 - (2 non-waterproof DS18B20 for backup in case waterproof sensors reacts too slow)
-- 1 33K (33Kohm) resistor
-- 1 68Kohm resistor 
+- 1 33k (33000 ohm) resistor
 
 And some basic hardware store items like 
 - wire (multicore wire like CAT-cable or phone cable)
