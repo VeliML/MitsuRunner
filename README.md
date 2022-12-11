@@ -26,6 +26,6 @@ And some basic items like
 - etc.
 
 ### Optional: connector to outdoor unit
-Connector body https://www.te.com/usa-en/product-2-1747066-4.html
-Male to PCB https://www.te.com/usa-en/product-2-1747067-4.html
-Crimps into terminal https://www.te.com/usa-en/product-CAT-G7534A-R2435.html?r=0&compatible=2-1747066-4
+* Connector body https://www.te.com/usa-en/product-2-1747066-4.html
+* Male to PCB https://www.te.com/usa-en/product-2-1747067-4.html
+* Crimps into terminal https://www.te.com/usa-en/product-CAT-G7534A-R2435.html?r=0&compatible=2-1747066-4
