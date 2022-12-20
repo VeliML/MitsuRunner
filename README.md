@@ -28,3 +28,7 @@ And some basic hardware store items like
 - wire (multicore wire like CAT-cable or phone cable)
 - enclosure for contoller
 - etc.
+
+# Authors
+- Veli Matti Lastumäki (Velsku at lampopumput.info)
+- Joonas Ihonen (puu at lampopumput.info)
