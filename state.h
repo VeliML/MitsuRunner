@@ -1,3 +1,4 @@
+/*
 # Copyright (c) 2021 Veli Matti Lastumäki (Velsku at lampopumput.info),
 #                    Joonas Ihonen (puu at lampopumput.info)
 #
@@ -19,6 +20,7 @@
 # CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+*/
 
 #ifndef __STATE_H__
 #define __STATE_H__

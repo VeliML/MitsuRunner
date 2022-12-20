@@ -29,6 +29,6 @@ And some basic hardware store items like
 - enclosure for contoller
 - etc.
 
-# Authors
+## Authors
 - Veli Matti Lastumäki (Velsku at lampopumput.info)
 - Joonas Ihonen (puu at lampopumput.info)
