@@ -265,8 +265,7 @@ sensor:
                 // or the upper temperature limit is exceeded, start defrosting directly.
                 else if (id(G_max_heating_time_passed)) {
                     id(enter_StartDefrosting).execute();
-                } 
-
+                }
                 break;
 
             // Should never end up in here
