@@ -18,19 +18,19 @@ Nyt tarvittava kehitysympäristö on koneellasi ja voit sulkea komentokehotteen.
 * Muokkaa tekstieditorilla yaml-tiedostoon oman kotiverkkosi WiFi-parametrit sekä haluamasi OTA password. 
 * Tarkista että lämpöantureiden ja rele-ohjauksen PIN-määrittelyt vastaavat tekemiäsi kytkentöjä. 
 
-* Liitä ESP32/ESP8266 usb-johdolla tietokoneeseesi
-* Avaa komentokehote/terminaali, siirry "Runner"-hakemistoon ja anna komento `esphome hw_check.yaml run`
+* Liitä ESP32/ESP8266 USB-johdolla tietokoneeseesi
+* Avaa komentokehote/terminaali, siirry "Runner"-hakemistoon ja anna komento `esphome run hw_check.yaml`
 * Jos asennus onnistuu, ohjelma kysyy lataustapaa (USB vai OTA). Valitse `USB`.
 ==> Ohjelma siirtyy USB:n kautta laitteelle
 
-* Jos siirtäminen ei onnistu tarkista että koneellesi on asennettu USB-ohjain esim. CHG340G tms.
+* Jos siirtäminen ei onnistu, tarkista että koneellesi on asennettu USB-ohjain esim. CHG340G tms.
 
 Tarkasta:
 * Rele naksuu (0.5 sek ON 5 sek välein)
-* Ruudulle tulostuu logi josta näkyy
+* Ruudulle tulostuu logi, josta näkyy:
 ** Laite on kytkeytynyt kotiverkkoosi
 ** DS18B20 antureiden ID-tunnukset - kirjaa ylös, tarvitset näitä myöhemmin - ja mitatut lämpötilat
-** Testaa myös OTA-lataus antamalla `esphome mitsurunner.yaml run` uudelleen, mutta valitse nyt lataustavaksi `OTA`
+** Testaa myös OTA-lataus antamalla `esphome run mitsurunner.yaml` uudelleen, mutta valitse nyt lataustavaksi `OTA`
 
 ## Mitsurunner-ohjelmisto
 
@@ -46,7 +46,7 @@ Näet kotiverkkosi käyttämän Gateway-ip:n esim. Windowsin komentokehotteella 
 ** Määritä DS18B20-antureiden ID:t - kirjasit nämä ylös hw_check-ohjelmaa käyttäessäsi
 ** Tarkista/korjaa tarvittaessa lämpöantureiden ja rele-ohjauksen PIN-määrittelyt vastaamaan tekemiäsi kytkentöjä
 
-* Käännä ja lähetä ohjelma laitteeseen komennolla `esphome mitsurunner.yaml run`
+* Käännä ja lähetä ohjelma laitteeseen komennolla `esphome run mitsurunner.yaml`
 
 ### Tarkista:
 Ruudulle tulostuu logi josta näkyy
@@ -76,7 +76,7 @@ Muokkaa platform.yaml-tiedostoon:
 `client_id: p5NVA6zTBfP***CQMvoR7A` <== kopioi IoT-guru "wemos" DEVICE/Device Details -sivulta löytyvä `DEVICE SHORT IDENTIFIER`
 `password: h06UcwI2-dAp***4ZvVEVA` <== kopio IoT_GURU "wemos" DEVICE/Device Details -sivulta löytyvä `DEVICE KEY`
 
-Kopio valmiit mqtt-stringit IoT-guru-sivuilta
+Kopioi valmiit mqtt-stringit IoT-guru-sivuilta
 
 # MQTT topics. These are inside single quotes
 topic_heatexchanger: 'kopio IoT-guru "mitsu"NODE-"kenno"-FIELD/Help-välilehdeltä `GENERIC MQTT TOPIC string` tähän

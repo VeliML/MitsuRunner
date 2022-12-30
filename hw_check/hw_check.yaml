@@ -3,7 +3,7 @@
 # Switches relay: 1sec on, 4sec off
 
 esphome:
-  name: mitsurunner-hw-check  
+  name: mitsurunner-hw-check
 # HW-platform
   platform: esp8266
   board: d1_mini
@@ -15,7 +15,7 @@ wifi:
 
   manual_ip:
 # Mitsurunner's IP address
-    static_ip: 192.168.1.100 
+    static_ip: 192.168.1.100
     subnet: 255.255.255.0
     gateway: 192.168.1.1
 
