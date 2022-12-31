@@ -1,5 +1,6 @@
 /* Copyright (c) 2021 Veli Matti Lastumäki (Velsku at lampopumput.info),
- *                    Joonas Ihonen (puu at lampopumput.info)
+ *                    Joonas Ihonen (puu at lampopumput.info),
+ *                    Ilkka Roivainen (iro at lampopumput.info)
  *
  * Permission is hereby granted, free of charge, to any person obtaining
  * a copy of this software and associated documentation files (the
