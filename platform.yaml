@@ -1,5 +1,6 @@
 # Copyright (c) 2021 Veli Matti Lastumäki (Velsku at lampopumput.info),
-#                    Joonas Ihonen (puu at lampopumput.info)
+#                    Joonas Ihonen (puu at lampopumput.info),
+#                    Ilkka Roivainen (iro at lampopumput.info)
 #
 # Permission is hereby granted, free of charge, to any person obtaining
 # a copy of this software and associated documentation files (the
@@ -73,6 +74,9 @@ substitutions:
   topic_heatexchanger:      'pub/uuu/ccc/nnn/heatex_temperature'
   topic_outdoor:            'pub/uuu/ccc/nnn/outdoor_temperature'
   topic_delta:              'pub/uuu/ccc/nnn/temperature_delta'
+  topic_rssi:               'pub/uuu/ccc/nnn/rssi'
+  topic_outdoor_errors:     'pub/uuu/ccc/nnn/error_outdoor'
+  topic_exchanger_errors:   'pub/uuu/ccc/nnn/error_heatex'
 
 # MQTT topics. Notice that these are inside both single and double quotes:
   topic_outdoor_raw:                    '"pub/uuu/ccc/nnn/outdoor_raw_temperature"'

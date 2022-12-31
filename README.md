@@ -32,3 +32,4 @@ And some basic hardware store items like
 ## Authors
 - Veli Matti Lastumäki (Velsku at lampopumput.info)
 - Joonas Ihonen (puu at lampopumput.info)
+- Ilkka Roivainen (iro at lampopumput.info)
