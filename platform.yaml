@@ -91,4 +91,4 @@ substitutions:
 
 # IO-pins:
   dallas_pin: 'D7' # Pin for DS18B20 1-wire temperature sensors. Set to the pin number you are using.
-  relay_pin:  'D0' # Pin for controlling relay
+  relay_pin:  'D1' # Pin for controlling relay
