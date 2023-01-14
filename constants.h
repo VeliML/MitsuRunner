@@ -37,11 +37,16 @@ const float HEAT_EXCHANGER_MAX_TEMPERATURE = 50.0;
 
 /* When temperature delta has been over the threshold 
  * (TEMPERATURE_DELTA_TO_DEFROST) this long, defrosting is started. */
-#define TEMPERATURE_DELTA_EXCESS_TIME   5   /* minutes */
+#define TEMPERATURE_DELTA_EXCESS_TIME   8   /* minutes */
+
+/* When temperature delta has been over the threshold but delta temperature is decreasing 
+ * This indicates that outdoor unit might be just changing it's fan speed which has temporarily raised temperature delta 
+ * This timer time is waited more if temperature delta decreases back under treshold */
+#define TEMPERATURE_DELTA_DECREASING_EXCESS_TIME   5   /* minutes */
 
 /* When this time has been passed since last defrosting, 
  * forced defrosting will be started. */
-#define MAX_HEATING_TIME                150 /* minutes */
+#define MAX_HEATING_TIME                180 /* minutes */
 
 /* The minimum time between defrosting operations. */
 #define MIN_HEATING_TIME                50  /* minutes */
