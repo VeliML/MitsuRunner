@@ -77,6 +77,7 @@ substitutions:
   topic_rssi:               'pub/uuu/ccc/nnn/rssi'
   topic_outdoor_errors:     'pub/uuu/ccc/nnn/error_outdoor'
   topic_exchanger_errors:   'pub/uuu/ccc/nnn/error_heatex'
+  topic_delta_temperature_latest_min: 'mitsurunner/temperature_delta_latest_min'
 
 # MQTT topics. Notice that these are inside both single and double quotes:
   topic_outdoor_raw:                    '"pub/uuu/ccc/nnn/outdoor_raw_temperature"'
