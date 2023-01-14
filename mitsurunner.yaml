@@ -171,6 +171,7 @@ sensor:
             }
 
 
+
 # Additional sensors can be added by defining new sensors - uncomment example below:
 # e.g. for having another sensors to measure outdoor temperature from different place. (not used by logic)
   # - platform: dallas
@@ -213,7 +214,7 @@ sensor:
     update_interval: 120s
     lambda: |-
         return id(heat_exchanger_temp_errors);
-
+        
 
 # ----------------------- Code/script section begins ----------------------- #
 
@@ -279,12 +280,28 @@ sensor:
                 break;
 
             case ST_TEMP_EXCEEDED:
-                // If the time threshold is exceeded, start defrosting
-                if (id(G_state_time_passed) || id(G_max_heating_time_passed)) {
+                // If the latest delta is not smallest from last measurements (delta going back down) and the time threshold is exceeded, start defrosting
+                if ( ((id(delta_temperature_min_from_last_values).state < temperature_delta) && id(G_state_time_passed)) || id(G_max_heating_time_passed)   ) {
                     id(enter_StartDefrosting).execute();
+                }
+                else if ( (id(delta_temperature_min_from_last_values).state >= temperature_delta) && id(G_state_time_passed) ) {
+                    id(enter_TempExceeded_TempDecreasing).execute();
                 }
                 else if (temperature_delta < TEMPERATURE_DELTA_TO_DEFROST) {
                     id(enter_Idle).execute();
+                }
+                break;
+                
+            case ST_TEMP_EXCEEDED_TEMP_DECREASING:
+                // In this state, temp delta direction is not anymore interesting. It goes even under treshold, which resolves situation or then timers exceeds and the defrosting needs to be started                
+                // If temperature continues to drop and goes below TEMPERATURE_DELTA_TO_DEFROST, cancel going to defrosting, outdoor unit has adjusted fan speed and is increasing it
+                if ( (temperature_delta < TEMPERATURE_DELTA_TO_DEFROST) ) {
+                    id(enter_Idle).execute();
+                }                
+                // Temp has not decreased under treshold during timer, ICE is already preventing air flow and outdoor unit can not increase flekt anymore
+                // or maximum heating time is passed --> Defrosting is needed
+                else if ( id(G_max_heating_time_passed) || id(G_state_time_passed) ) {
+                    id(enter_StartDefrosting).execute();                
                 }
                 break;
 
@@ -324,6 +341,20 @@ sensor:
                 break;
         }
         return temperature_delta;
+
+# Sensor to follow direction of temperature change
+  - platform: template
+    id: delta_temperature_min_from_last_values
+    name: "Delta Temperature direction"
+    state_topic: $topic_delta_temperature_latest_min
+    update_interval: 30s
+    lambda: |-
+      float temperature_delta_min = (id(G_outdoor_temp_filtered) - id(heat_exchanger_temp).state);
+      return temperature_delta_min;      
+    filters:
+    - min:
+        window_size: 5
+        send_every: 1
 
 script:
 
@@ -383,6 +414,17 @@ script:
         id(G_previous_state) = id(G_state);
         id(G_state) = ST_TEMP_EXCEEDED;
         id(G_state_timer) = TEMPERATURE_DELTA_EXCESS_TIME * 60000;
+    - script.execute: start_state_timer
+
+######### ST_TEMP_EXCEEDED_TEMP_DECREASING #########
+  - id: enter_TempExceeded_TempDecreasing
+    mode: single
+    then:
+    - switch.turn_on: gpio_relay
+    - lambda: !lambda |-
+        id(G_previous_state) = id(G_state);
+        id(G_state) = ST_TEMP_EXCEEDED_TEMP_DECREASING;
+        id(G_state_timer) = TEMPERATURE_DELTA_DECREASING_EXCESS_TIME * 60000;
     - script.execute: start_state_timer
 
 ######### ST_START_DEFROSTING #########
@@ -490,3 +532,4 @@ script:
     - lambda: !lambda |-
         id(mqtt_client).publish(id(G_TOPIC_FORCE_DEFROST_TIMER_STATE), to_string(TMR_PASSED)); 
         id(G_max_heating_time_passed) = true;
+
