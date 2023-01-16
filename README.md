@@ -33,3 +33,7 @@ And some basic hardware store items like
 - Veli Matti Lastumäki (Velsku at lampopumput.info)
 - Joonas Ihonen (puu at lampopumput.info)
 - Ilkka Roivainen (iro at lampopumput.info)
+
+## Links
+- MitsuRunner wiki page (en/fi): https://puu.kapsi.fi/mitsurunner
+- MitsuRunner discussion (fi): https://lampopumput.info/foorumi/threads/msz-ln-sulatushuijaus.31223/
