@@ -21,33 +21,6 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-# SETTINGS: Your wifi details
-wifi:
-  ssid: "xxxxx"
-  password: "xxxxxxxx"
-# Set manual IP address so that wireless "OTA" update will work more reliably
-# Check these numbers from your wifi network/router (often found in DHCP settings)
-  manual_ip:
-    static_ip: 192.168.1.100
-    subnet: 255.255.255.0
-    gateway: 192.168.1.0
-
-# Enables firmware updates over wifi
-# Set your unique password to prevent hackers to modify your device
-ota:
-  password: "password"
-
-# MQTT broker configuration
-# Set broker ip address to match 
-mqtt:
-  broker: 192.168.1.xxx 
-  id: mqtt_client
-  username: change_this
-  client_id: change_this
-  password: change_this
-#mqtt message prefix, change this to what you want
-  topic_prefix: msz_ln/temperature
-
 # In case of you use IoT Guru ( https://iotguru.cloud ), uncomment and use data below.
 # Check correct values from your IoT Guru account
 # broker: mqtt.iotguru.cloud
