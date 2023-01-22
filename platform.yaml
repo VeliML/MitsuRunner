@@ -21,13 +21,6 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-# In case of you use IoT Guru ( https://iotguru.cloud ), uncomment and use data below.
-# Check correct values from your IoT Guru account
-# broker: mqtt.iotguru.cloud
-# username: user short identifier
-# client_id: device short identifier
-# password: device key
-
 # Enable logging to terminal. You can read log messages over wifi
 logger:
 
