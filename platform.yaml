@@ -71,13 +71,14 @@ substitutions:
 # If you use IoT Guru: Replace with your own values: uuu = user_id, ccc = client_id, nnn = node_short_identifier.
 # In IoT Guru see Field > Help and copy/paste the line under 'GENERIC MQTT TOPIC'
 # It should look like: "pub/qwertyuiop/asdfghjkl/zxcvbnm/temperature_delta"
-  topic_heatexchanger:      'pub/uuu/ccc/nnn/heatex_temperature'
-  topic_outdoor:            'pub/uuu/ccc/nnn/outdoor_temperature'
-  topic_delta:              'pub/uuu/ccc/nnn/temperature_delta'
-  topic_rssi:               'pub/uuu/ccc/nnn/rssi'
-  topic_outdoor_errors:     'pub/uuu/ccc/nnn/error_outdoor'
-  topic_exchanger_errors:   'pub/uuu/ccc/nnn/error_heatex'
-  topic_delta_temperature_latest_min: 'mitsurunner/temperature_delta_latest_min'
+  topic_heatexchanger:                  'pub/uuu/ccc/nnn/heatex_temperature'
+  topic_outdoor:                        'pub/uuu/ccc/nnn/outdoor_temperature'
+  topic_delta:                          'pub/uuu/ccc/nnn/temperature_delta'
+  topic_rssi:                           'pub/uuu/ccc/nnn/rssi'
+  topic_outdoor_errors:                 'pub/uuu/ccc/nnn/error_outdoor'
+  topic_exchanger_errors:               'pub/uuu/ccc/nnn/error_heatex'
+  topic_delta_temperature_latest_min:   'pub/uuu/ccc/nnn/temperature_delta_latest_min'
+  topic_uptime:                         'pub/uuu/ccc/nnn/uptime'
 
 # MQTT topics. Notice that these are inside both single and double quotes:
   topic_outdoor_raw:                    '"pub/uuu/ccc/nnn/outdoor_raw_temperature"'

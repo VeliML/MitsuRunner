@@ -214,7 +214,14 @@ sensor:
     update_interval: 120s
     lambda: |-
         return id(heat_exchanger_temp_errors);
-        
+
+# Uptime
+  - platform: uptime
+    id: uptime_counter
+    name: "uptime"
+    state_topic: $topic_uptime
+    update_interval: 60s
+
 
 # ----------------------- Code/script section begins ----------------------- #
 
@@ -291,13 +298,13 @@ sensor:
                     id(enter_Idle).execute();
                 }
                 break;
-                
+
             case ST_TEMP_EXCEEDED_TEMP_DECREASING:
                 // In this state, temp delta direction is not anymore interesting. It goes even under treshold, which resolves situation or then timers exceeds and the defrosting needs to be started                
                 // If temperature continues to drop and goes below TEMPERATURE_DELTA_TO_DEFROST, cancel going to defrosting, outdoor unit has adjusted fan speed and is increasing it
                 if ( (temperature_delta < TEMPERATURE_DELTA_TO_DEFROST) ) {
                     id(enter_Idle).execute();
-                }                
+                }
                 // Temp has not decreased under treshold during timer, ICE is already preventing air flow and outdoor unit can not increase flekt anymore
                 // or maximum heating time is passed --> Defrosting is needed
                 else if ( id(G_max_heating_time_passed) || id(G_state_time_passed) ) {
