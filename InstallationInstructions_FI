@@ -36,13 +36,15 @@ Tarkasta:
 
 * Lataa Mitsurunner https://github.com/VeliML/MitsuRunner - paina `CODE` ja `Download ZIP`
 * Pura paketti aiemmin luomaasi hakemistoon (esim. Runner)
-* Muokkaa tekstieditorilla tiedostoa `platform.yaml`
+* Aja käyttöjärjestelmästäsi riippuen joko init.bat (Windows) tai init.sh (Unix-pohjaiset) luokaksesi secrets.yaml -tiedoston
+* Muokkaa tekstieditorilla tiedostoa `secrets.yaml`
 ** Määrittele wifi-verkkosi "ssid" (nimi) ja "password" (salasana)
 ** Määrittele Manual IP -asetukset:
 *** static_ip: (IP-osoite, jolla laite kytkeytyy kotiverkkoon)
 *** gateway: (IP-osoite jolla kotiverkkosi kytkeytyy kotiverkon ulkoverkkoon)
 Näet kotiverkkosi käyttämän Gateway-ip:n esim. Windowsin komentokehotteella "ipconfig"
 ** Määritä haluamasi OTA-password
+* Muokkaa tekstieditorilla tiedostoa `platform.yaml`
 ** Määritä DS18B20-antureiden ID:t - kirjasit nämä ylös hw_check-ohjelmaa käyttäessäsi
 ** Tarkista/korjaa tarvittaessa lämpöantureiden ja rele-ohjauksen PIN-määrittelyt vastaamaan tekemiäsi kytkentöjä
 
