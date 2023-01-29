@@ -35,5 +35,5 @@ And some basic hardware store items like
 - Ilkka Roivainen (iro at lampopumput.info)
 
 ## Links
-- MitsuRunner wiki page (en/fi): https://puu.kapsi.fi/mitsurunner
+- MitsuRunner wiki page (en/fi): https://mitsurunner.com
 - MitsuRunner discussion (fi): https://lampopumput.info/foorumi/threads/msz-ln-sulatushuijaus.31223/
