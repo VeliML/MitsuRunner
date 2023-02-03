@@ -147,10 +147,11 @@ sensor:
     state_topic: $topic_outdoor
     filters:
       - filter_out: nan
-      - sliding_window_moving_average:
-          window_size: 360  #30min
-          send_every: 6     #30s
-          send_first_at: 2  #10s
+      - filter_out: 85.0
+      - exponential_moving_average:
+          alpha: 0.01
+          send_every: 6 #30s
+          send_first_at: 2 #10s
     on_raw_value:
       then:
         lambda: !lambda |-
