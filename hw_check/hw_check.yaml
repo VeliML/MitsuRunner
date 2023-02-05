@@ -26,29 +26,16 @@
 # Shows IDs of connected Dallas sensors
 # Switches relay: 1sec on, 4sec off
 
+<<: !include ../secrets.yaml
+
 esphome:
   name: mitsurunner-hw-check
 # HW-platform
   platform: esp8266
   board: d1_mini
 
-wifi:
-# Set your WiFi parameters
-  ssid: "xxxxxxxx"
-  password: "yyyyyyyy"
-
-  manual_ip:
-# Mitsurunner's IP address
-    static_ip: 192.168.1.100
-    subnet: 255.255.255.0
-    gateway: 192.168.1.1
-
 # Logs on
 logger:
-
-# OtA-update password
-ota:
-  password: "zzzzzzzz"
 
 # Dallas PIN, change PIN if needed
 dallas:
