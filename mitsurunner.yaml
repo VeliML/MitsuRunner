@@ -31,6 +31,7 @@ esphome:
   board: $board_type
   on_boot: 
   - switch.turn_off: gpio_relay
+  - output.turn_on: dallas_power
   - script.execute: schedule_forced_defrosting
   - script.execute: initialize
   includes:
@@ -542,3 +543,57 @@ script:
         id(mqtt_client).publish(id(G_TOPIC_FORCE_DEFROST_TIMER_STATE), to_string(TMR_PASSED)); 
         id(G_max_heating_time_passed) = true;
 
+
+#############################################################################
+#########################Sonoff Th Elite display#############################
+###            two LCD screens alternate every 5 seconds                  ###
+#############################################################################
+###   heat_exchanger_temp  ###########  Wifi-signal        ##################
+###   outdoor_temp         ###########  Dallas error count ##################
+#############################################################################
+### RED LED = POWER #### GREEN LED = Defrost prevention control activated ###
+#############################################################################
+
+output:
+  - platform: gpio
+    pin: GPIO16
+    inverted: true
+    id: red_led
+
+  - platform: gpio
+    pin: GPIO13
+    inverted: true
+    id: green_led
+
+  - platform: gpio
+    pin: GPIO27 #DallasPowerPIN
+    id: dallas_power
+
+display:
+  platform: tm1621
+  id: tm1621_display
+  update_interval: 5s
+  cs_pin: GPIO17
+  data_pin: GPIO5
+  read_pin: GPIO23
+  write_pin: GPIO18
+  lambda: |-
+    static int n = 0;
+    id(red_led).turn_on();                                //Keep POWER-led ON
+    if (id(gpio_relay).state) id(green_led).turn_on();    //Relay ON, turn gree_led ON
+    else id(green_led).turn_off();                        //Relay OFF, turn red_led OFF
+
+    if (n == 0) {
+       n = 1;
+       it.printf(0, "%.1f", id(heat_exchanger_temp).state);
+       it.display_celsius(true);
+       it.printf(1, "%.1f", id(outdoor_temp).state);
+       it.display_humidity(false);
+       }
+     else {
+       n = 0;
+       it.printf(0, "%.1f", id(wifi_signal_dbm).state);
+       it.display_celsius(false);
+       it.printf(1,"%.1i", id(outdoor_temp_errors)+ id(heat_exchanger_temp_errors));
+       it.display_humidity(false);
+       }

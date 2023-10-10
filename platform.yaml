@@ -26,8 +26,8 @@ logger:
 
 substitutions:
 # Define these values according to your hardware see: https://esphome.io
-  platform_type:        'esp8266'
-  board_type:           'd1_mini'
+  platform_type: 'esp32'
+  board_type: 'nodemcu-32s'
 
 # Addresses for your Dallas DS18B20 temperature sensors - you need to update these
   dallas_address_heat_exchanger_temp: '0x653C01D607697928'
@@ -58,5 +58,5 @@ substitutions:
   topic_error:                          '"pub/uuu/ccc/nnn/error"'
 
 # IO-pins:
-  dallas_pin: 'D7' # Pin for DS18B20 1-wire temperature sensors. Set to the pin number you are using.
-  relay_pin:  'D1' # Pin for controlling relay
+  dallas_pin: 'GPIO25' # Pin for DS18B20 1-wire temperature sensors. Set to the pin number you are using.
+  relay_pin: 'GPIO4' # Pin for controlling relay
