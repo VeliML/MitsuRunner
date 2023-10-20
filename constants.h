@@ -35,6 +35,10 @@ const float OUTDOOR_TEMPERATURE_TO_EXIT_OFF_STATE = 2.0;
  * This is checked on Reset, Idle and Off states only, not during defrosting */
 const float HEAT_EXCHANGER_MAX_TEMPERATURE = 50.0;
 
+/* Temperature delta value to account defrosting as started.
+ * Not suggested to set this below -4.0 because it may cause the software to miss defrost events. */
+const float TEMPERATURE_DELTA_DEFROSTING_STARTED = -1.0;
+
 /* When temperature delta has been over the threshold 
  * (TEMPERATURE_DELTA_TO_DEFROST) this long, defrosting is started. */
 #define TEMPERATURE_DELTA_EXCESS_TIME   8   /* minutes */
