@@ -254,7 +254,7 @@ sensor:
                         id(enter_Off).execute();
                     }
                     // If defrosting is going on
-                    else if (temperature_delta <= 0.0) {
+                    else if (temperature_delta <= TEMPERATURE_DELTA_DEFROSTING_STARTED) {
                         id(enter_DefrostingStarted).execute();
                     }
                     else {
