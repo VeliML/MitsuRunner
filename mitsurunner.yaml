@@ -68,7 +68,12 @@ globals:
     type: int
     restore_value: no
     initial_value: '0'
-
+  - id: G_long_defrosting
+    type: bool
+    initial_value: 'false'
+  - id: G_manual_defrosting
+    type: bool
+    initial_value: 'false'
 
 # global constants
   - id: G_TOPIC_STATE
@@ -114,6 +119,42 @@ switch:
     pin: $relay_pin
     name: "Defrost prevention control"
     id: gpio_relay
+
+
+  - platform: template
+    name: "Defrost maximum time (once)"
+    id: long_defrosting
+    lambda: "return id(G_long_defrosting);"
+    turn_on_action:
+      then:
+        lambda: !lambda |-
+          switch(id(G_state)) {
+              case ST_HEATING_MIN_TIME:
+              case ST_IDLE:
+              case ST_TEMP_EXCEEDED:
+                  id(G_long_defrosting) = true;
+                  break;
+          }
+    turn_off_action:
+      then:
+          lambda: !lambda "id(G_long_defrosting) = false;"
+
+  - platform: template
+    name: "Defrost manual start"
+    id: manual_defrosting
+    lambda: "return id(G_manual_defrosting);"
+    turn_on_action:
+      then:
+        lambda: !lambda |-
+          switch(id(G_state)) {
+              case ST_IDLE:
+              case ST_TEMP_EXCEEDED:
+                  id(G_manual_defrosting) = true;
+                  break;
+          }
+    turn_off_action:
+      then:
+          lambda: !lambda "id(G_manual_defrosting) = false;"
 
 # Temperature sensor (Dallas DS18B20) details. 
 # You need to check temperature sensors IDs by starting this software and checking IDs from log printing to terminal. 
@@ -270,7 +311,7 @@ sensor:
                     id(enter_Off).execute();
                 }
                 // If maximum heating time exceeded, start defrosting immediately
-                else if (id(G_max_heating_time_passed)) {
+                else if (id(G_max_heating_time_passed) || id(G_manual_defrosting)) {
                     id(enter_StartDefrosting).execute();
                 }
                 // Wait for the temperature delta threshold to be exceeded.
@@ -290,10 +331,12 @@ sensor:
 
             case ST_TEMP_EXCEEDED:
                 // If the latest delta is not smallest from last measurements (delta going back down) and the time threshold is exceeded, start defrosting
-                if ( ((id(delta_temperature_min_from_last_values).state < temperature_delta) && id(G_state_time_passed)) || id(G_max_heating_time_passed)   ) {
+                if (((id(delta_temperature_min_from_last_values).state < temperature_delta) && id(G_state_time_passed)) ||
+                    id(G_max_heating_time_passed) ||
+                     id(G_manual_defrosting)) {
                     id(enter_StartDefrosting).execute();
                 }
-                else if ( (id(delta_temperature_min_from_last_values).state >= temperature_delta) && id(G_state_time_passed) ) {
+                else if ((id(delta_temperature_min_from_last_values).state >= temperature_delta) && id(G_state_time_passed)) {
                     id(enter_TempExceeded_TempDecreasing).execute();
                 }
                 else if (temperature_delta < TEMPERATURE_DELTA_TO_DEFROST) {
@@ -309,8 +352,8 @@ sensor:
                 }
                 // Temp has not decreased under treshold during timer, ICE is already preventing air flow and outdoor unit can not increase flekt anymore
                 // or maximum heating time is passed --> Defrosting is needed
-                else if ( id(G_max_heating_time_passed) || id(G_state_time_passed) ) {
-                    id(enter_StartDefrosting).execute();                
+                else if (id(G_max_heating_time_passed) || id(G_state_time_passed) || id(G_manual_defrosting)) {
+                    id(enter_StartDefrosting).execute();
                 }
                 break;
 
@@ -321,12 +364,23 @@ sensor:
                 }
                 // Check that defrosting is really started.
                 else if (temperature_delta < TEMPERATURE_DELTA_DEFROSTING_STARTED) {
-                    id(enter_DefrostingStarted).execute();
+                    if(id(G_long_defrosting)) {
+                       id(enter_LongDefrostingStarted).execute();
+                    } else {
+                        id(enter_DefrostingStarted).execute();
+                    }
                 }
                 break;
 
             case ST_DEFROSTING_STARTED:
                 // Keep the relay off for a while.
+                if (id(G_state_time_passed)) {
+                    id(enter_HeatingMinTime).execute();
+                }
+                break;
+
+            case ST_LONG_DEFROSTING_STARTED:
+                // Keep the relay on to get maximum defrosting time.
                 if (id(G_state_time_passed)) {
                     id(enter_HeatingMinTime).execute();
                 }
@@ -383,6 +437,8 @@ script:
     mode: single
     then:
     - switch.turn_off: gpio_relay
+    - switch.turn_off: long_defrosting
+    - switch.turn_off: manual_defrosting
     - lambda: !lambda |-
         id(G_previous_state) = id(G_state);
         id(G_state) = ST_RESET;
@@ -394,6 +450,8 @@ script:
     mode: single
     then:
     - switch.turn_off: gpio_relay
+    - switch.turn_off: long_defrosting
+    - switch.turn_off: manual_defrosting
     - lambda: !lambda |-
         id(start_state_timer).stop();
         id(schedule_forced_defrosting).stop();
@@ -441,6 +499,7 @@ script:
     mode: single
     then:
     - switch.turn_off: gpio_relay
+    - switch.turn_off: manual_defrosting
     - lambda: !lambda |-
         id(G_previous_state) = id(G_state);
         id(G_state) = ST_START_DEFROSTING;
@@ -452,10 +511,26 @@ script:
     mode: single
     then:
     - switch.turn_off: gpio_relay
+    - switch.turn_off: long_defrosting
+    - switch.turn_off: manual_defrosting
     - lambda: !lambda |-
         id(G_previous_state) = id(G_state);
         id(G_state) = ST_DEFROSTING_STARTED;
         id(G_state_timer) =  RELAY_OFF_TIME * 60000;        
+    - script.execute: schedule_forced_defrosting
+    - script.execute: start_state_timer
+
+######## ST_DEFROSTING_STARTED ########
+  - id: enter_LongDefrostingStarted
+    mode: single
+    then:
+    - switch.turn_on: gpio_relay
+    - switch.turn_off: long_defrosting
+    - switch.turn_off: manual_defrosting
+    - lambda: !lambda |-
+        id(G_previous_state) = id(G_state);
+        id(G_state) = ST_LONG_DEFROSTING_STARTED;
+        id(G_state_timer) =  RELAY_OFF_TIME * 60000;
     - script.execute: schedule_forced_defrosting
     - script.execute: start_state_timer
 
@@ -464,6 +539,8 @@ script:
     mode: single
     then:
     - switch.turn_on: gpio_relay
+    - switch.turn_off: long_defrosting
+    - switch.turn_off: manual_defrosting
     - lambda: !lambda |-
         id(G_previous_state) = id(G_state);
         id(G_state) = ST_HEATING_MIN_TIME;
