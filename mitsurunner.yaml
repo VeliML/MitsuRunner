@@ -68,7 +68,12 @@ globals:
     type: int
     restore_value: no
     initial_value: '0'
-
+  - id: G_long_defrosting
+    type: bool
+    initial_value: 'false'
+  - id: G_manual_defrosting
+    type: bool
+    initial_value: 'false'
 
 # global constants
   - id: G_TOPIC_STATE
@@ -112,8 +117,45 @@ dallas:
 switch:
   - platform: gpio
     pin: $relay_pin
-    name: "Defrost prevention control"
+    name: "Relay - defrost prevention"
     id: gpio_relay
+
+  - platform: template
+    name: "Defrost - force maximum length"
+    id: long_defrosting
+    lambda: "return id(G_long_defrosting);"
+    turn_on_action:
+      then:
+        lambda: !lambda |-
+          switch(id(G_state)) {
+              case ST_HEATING_MIN_TIME:
+              case ST_IDLE:
+              case ST_TEMP_EXCEEDED:
+              case ST_TEMP_EXCEEDED_TEMP_DECREASING:
+                  id(G_long_defrosting) = true;
+                  break;
+          }
+    turn_off_action:
+      then:
+          lambda: !lambda "id(G_long_defrosting) = false;"
+
+  - platform: template
+    name: "Defrost - manual start"
+    id: manual_defrosting
+    lambda: "return id(G_manual_defrosting);"
+    turn_on_action:
+      then:
+        lambda: !lambda |-
+          switch(id(G_state)) {
+              case ST_IDLE:
+              case ST_TEMP_EXCEEDED:
+              case ST_TEMP_EXCEEDED_TEMP_DECREASING:
+                  id(G_manual_defrosting) = true;
+                  break;
+          }
+    turn_off_action:
+      then:
+          lambda: !lambda "id(G_manual_defrosting) = false;"
 
 # Temperature sensor (Dallas DS18B20) details. 
 # You need to check temperature sensors IDs by starting this software and checking IDs from log printing to terminal. 
@@ -121,7 +163,7 @@ switch:
 sensor:
   - platform: dallas
     address: $dallas_address_heat_exchanger_temp # Remember to define this on platform.yaml
-    name: "outdoor unit heat exchanger temperature"
+    name: "Temperature - heat exchanger"
     id: heat_exchanger_temp
     accuracy_decimals: 1
     state_topic: $topic_heatexchanger
@@ -141,7 +183,7 @@ sensor:
 
   - platform: dallas
     address: $dallas_address_outdoor_temp # Remember to define this on platform.yaml
-    name: "outdoor temperature"
+    name: "Temperature - outdoor"
     id: outdoor_temp
     accuracy_decimals: 1
     state_topic: $topic_outdoor
@@ -172,7 +214,11 @@ sensor:
                 id(G_outdoor_temp_filtered) = id(G_outdoor_temp_filtered) * (1.0 - alpha) + x * alpha;
             }
 
-
+  # To show state on the web server
+  - platform: template
+    name: "State"
+    id: state_template
+    lambda: "return id(G_state);"
 
 # Additional sensors can be added by defining new sensors - uncomment example below:
 # e.g. for having another sensors to measure outdoor temperature from different place. (not used by logic)
@@ -203,7 +249,7 @@ sensor:
 # Error counters for Dallas sensor errors
   - platform: template
     id: report_outdoor_errors
-    name: "outdoor_errors"
+    name: "Errors - outdoor temperature"
     state_topic: $topic_outdoor_errors
     update_interval: 120s
     lambda: |-
@@ -211,7 +257,7 @@ sensor:
 
   - platform: template
     id: report_heat_exchanger_errors
-    name: "heat_exchanger_errors"
+    name: "Errors - heat exchanger temperature"
     state_topic: $topic_exchanger_errors
     update_interval: 120s
     lambda: |-
@@ -220,7 +266,7 @@ sensor:
 # Uptime
   - platform: uptime
     id: uptime_counter
-    name: "uptime"
+    name: "Uptime"
     state_topic: $topic_uptime
     update_interval: 60s
 
@@ -231,7 +277,7 @@ sensor:
 # State machine to trigger defrosting when needed
   - platform: template
     id: state_machine
-    name: "Defrost state machine"
+    name: "Delta(temperature)"
     state_topic: $topic_delta
     update_interval: 30s
 # This C++ code checks if all requirements are fullfilled to trigger defrosting and triggers it then.
@@ -270,7 +316,7 @@ sensor:
                     id(enter_Off).execute();
                 }
                 // If maximum heating time exceeded, start defrosting immediately
-                else if (id(G_max_heating_time_passed)) {
+                else if (id(G_max_heating_time_passed) || id(G_manual_defrosting)) {
                     id(enter_StartDefrosting).execute();
                 }
                 // Wait for the temperature delta threshold to be exceeded.
@@ -290,10 +336,11 @@ sensor:
 
             case ST_TEMP_EXCEEDED:
                 // If the latest delta is not smallest from last measurements (delta going back down) and the time threshold is exceeded, start defrosting
-                if ( ((id(delta_temperature_min_from_last_values).state < temperature_delta) && id(G_state_time_passed)) || id(G_max_heating_time_passed)   ) {
+                if (((id(delta_temperature_min_from_last_values).state < temperature_delta) && id(G_state_time_passed)) ||
+                    id(G_max_heating_time_passed) || id(G_manual_defrosting)) {
                     id(enter_StartDefrosting).execute();
                 }
-                else if ( (id(delta_temperature_min_from_last_values).state >= temperature_delta) && id(G_state_time_passed) ) {
+                else if ((id(delta_temperature_min_from_last_values).state >= temperature_delta) && id(G_state_time_passed)) {
                     id(enter_TempExceeded_TempDecreasing).execute();
                 }
                 else if (temperature_delta < TEMPERATURE_DELTA_TO_DEFROST) {
@@ -309,8 +356,8 @@ sensor:
                 }
                 // Temp has not decreased under treshold during timer, ICE is already preventing air flow and outdoor unit can not increase flekt anymore
                 // or maximum heating time is passed --> Defrosting is needed
-                else if ( id(G_max_heating_time_passed) || id(G_state_time_passed) ) {
-                    id(enter_StartDefrosting).execute();                
+                else if (id(G_max_heating_time_passed) || id(G_state_time_passed) || id(G_manual_defrosting)) {
+                    id(enter_StartDefrosting).execute();
                 }
                 break;
 
@@ -321,12 +368,23 @@ sensor:
                 }
                 // Check that defrosting is really started.
                 else if (temperature_delta < TEMPERATURE_DELTA_DEFROSTING_STARTED) {
-                    id(enter_DefrostingStarted).execute();
+                    if(id(G_long_defrosting)) {
+                       id(enter_LongDefrostingStarted).execute();
+                    } else {
+                        id(enter_DefrostingStarted).execute();
+                    }
                 }
                 break;
 
             case ST_DEFROSTING_STARTED:
                 // Keep the relay off for a while.
+                if (id(G_state_time_passed)) {
+                    id(enter_HeatingMinTime).execute();
+                }
+                break;
+
+            case ST_LONG_DEFROSTING_STARTED:
+                // Keep the relay on to get maximum defrosting time.
                 if (id(G_state_time_passed)) {
                     id(enter_HeatingMinTime).execute();
                 }
@@ -354,12 +412,13 @@ sensor:
 # Sensor to follow direction of temperature change
   - platform: template
     id: delta_temperature_min_from_last_values
-    name: "Delta Temperature direction"
+    name: "Delta(temperature) direction"
     state_topic: $topic_delta_temperature_latest_min
     update_interval: 30s
+    internal: true
     lambda: |-
       float temperature_delta_min = (id(G_outdoor_temp_filtered) - id(heat_exchanger_temp).state);
-      return temperature_delta_min;      
+      return temperature_delta_min;
     filters:
     - min:
         window_size: 5
@@ -383,6 +442,8 @@ script:
     mode: single
     then:
     - switch.turn_off: gpio_relay
+    - switch.turn_off: long_defrosting
+    - switch.turn_off: manual_defrosting
     - lambda: !lambda |-
         id(G_previous_state) = id(G_state);
         id(G_state) = ST_RESET;
@@ -394,6 +455,8 @@ script:
     mode: single
     then:
     - switch.turn_off: gpio_relay
+    - switch.turn_off: long_defrosting
+    - switch.turn_off: manual_defrosting
     - lambda: !lambda |-
         id(start_state_timer).stop();
         id(schedule_forced_defrosting).stop();
@@ -441,6 +504,7 @@ script:
     mode: single
     then:
     - switch.turn_off: gpio_relay
+    - switch.turn_off: manual_defrosting
     - lambda: !lambda |-
         id(G_previous_state) = id(G_state);
         id(G_state) = ST_START_DEFROSTING;
@@ -452,10 +516,26 @@ script:
     mode: single
     then:
     - switch.turn_off: gpio_relay
+    - switch.turn_off: long_defrosting
+    - switch.turn_off: manual_defrosting
     - lambda: !lambda |-
         id(G_previous_state) = id(G_state);
         id(G_state) = ST_DEFROSTING_STARTED;
-        id(G_state_timer) =  RELAY_OFF_TIME * 60000;        
+        id(G_state_timer) =  RELAY_OFF_TIME * 60000;
+    - script.execute: schedule_forced_defrosting
+    - script.execute: start_state_timer
+
+######## ST_LONG_DEFROSTING_STARTED ########
+  - id: enter_LongDefrostingStarted
+    mode: single
+    then:
+    - switch.turn_on: gpio_relay
+    - switch.turn_off: long_defrosting
+    - switch.turn_off: manual_defrosting
+    - lambda: !lambda |-
+        id(G_previous_state) = id(G_state);
+        id(G_state) = ST_LONG_DEFROSTING_STARTED;
+        id(G_state_timer) =  RELAY_OFF_TIME * 60000;
     - script.execute: schedule_forced_defrosting
     - script.execute: start_state_timer
 
@@ -464,6 +544,8 @@ script:
     mode: single
     then:
     - switch.turn_on: gpio_relay
+    - switch.turn_off: long_defrosting
+    - switch.turn_off: manual_defrosting
     - lambda: !lambda |-
         id(G_previous_state) = id(G_state);
         id(G_state) = ST_HEATING_MIN_TIME;
