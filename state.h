@@ -26,6 +26,7 @@
 
 enum State
 {
+	ST_LONG_DEFROSTING_STARTED = -5,
 	ST_RESET = -4,
 	ST_OFF = -3,
 	ST_DEFROSTING_STARTED = -2,
