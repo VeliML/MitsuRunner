@@ -164,6 +164,7 @@ switch:
 sensor:
   - platform: dallas
     address: $dallas_address_heat_exchanger_temp # Remember to define this on platform.yaml
+    #index: 0
     name: "Temperature - heat exchanger"
     id: heat_exchanger_temp
     accuracy_decimals: 1
@@ -184,6 +185,7 @@ sensor:
 
   - platform: dallas
     address: $dallas_address_outdoor_temp # Remember to define this on platform.yaml
+    #index: 1
     name: "Temperature - outdoor"
     id: outdoor_temp
     accuracy_decimals: 1
