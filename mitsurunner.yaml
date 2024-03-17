@@ -22,7 +22,11 @@
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 <<: !include secrets.yaml
-<<: !include platform.yaml
+
+
+# Select used platform (Wemos or Sonoff TH Elite)
+<<: !include platform_wemos.yaml
+#<<: !include platform_elite.yaml
 
 # initialize and define Mitsurunner
 esphome:
@@ -31,6 +35,7 @@ esphome:
   board: $board_type
   on_boot: 
   - switch.turn_off: gpio_relay
+  - switch.turn_on: dallas_power  #for Sonoff Elite
   - script.execute: schedule_forced_defrosting
   - script.execute: initialize
   includes:
@@ -120,6 +125,14 @@ switch:
     name: "Relay - defrost prevention"
     id: gpio_relay
 
+  - platform: gpio # 3.3V supply for Dallas sensors (Sonoff Elite only)
+    pin: 
+      number: $dallas_power_pin
+      mode:
+        output: true
+    id: dallas_power
+
+
   - platform: template
     name: "Defrost - force maximum length"
     id: long_defrosting
@@ -163,6 +176,7 @@ switch:
 sensor:
   - platform: dallas
     address: $dallas_address_heat_exchanger_temp # Remember to define this on platform.yaml
+ #   index: 0    #Use index instead of address only for testing
     name: "Temperature - heat exchanger"
     id: heat_exchanger_temp
     accuracy_decimals: 1
@@ -183,6 +197,7 @@ sensor:
 
   - platform: dallas
     address: $dallas_address_outdoor_temp # Remember to define this on platform.yaml
+ #   index: 1   #Use index instead of address only for testing
     name: "Temperature - outdoor"
     id: outdoor_temp
     accuracy_decimals: 1

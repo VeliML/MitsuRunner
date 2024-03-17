@@ -26,11 +26,11 @@ logger:
 
 substitutions:
 # Define these values according to your hardware see: https://esphome.io
-  platform_type:        'esp8266'
-  board_type:           'd1_mini'
+  platform_type: 'esp32'
+  board_type:    'nodemcu-32s'
 
 # Addresses for your Dallas DS18B20 temperature sensors - you need to update these
-  dallas_address_heat_exchanger_temp: '0x653C01D607697928'
+  dallas_address_heat_exchanger_temp: '0x8501191438ccd428'
   dallas_address_outdoor_temp:        '0x93000802B67D1E10'
 
 # MQTT topics. These are inside single quotes:
@@ -58,5 +58,66 @@ substitutions:
   topic_error:                          '"pub/uuu/ccc/nnn/error"'
 
 # IO-pins:
-  dallas_pin: 'D7' # Pin for DS18B20 1-wire temperature sensors. Set to the pin number you are using.
-  relay_pin:  'D1' # Pin for controlling relay
+  dallas_pin: 'GPIO25' # Pin for DS18B20 1-wire temperature sensors. Set to the pin number you are using.
+  relay_pin: 'GPIO4' # Pin for controlling relay
+  dallas_power_pin: 'GPIO27'
+
+
+#############################################################################
+#########################Sonoff Th Elite display#############################
+###            two LCD screens alternate every 5 seconds                  ###
+#############################################################################
+###   heat_exchanger_temp  ###########  Wifi-signal        ##################
+###   outdoor_temp         ###########  Dallas error count ##################
+#############################################################################
+### RED LED = POWER #### GREEN LED = Defrost prevention control activated ###
+#############################################################################
+
+output:
+  - platform: gpio
+    pin: GPIO16
+    inverted: true
+    id: red_led
+
+  - platform: gpio
+    pin: GPIO13
+    inverted: true
+    id: green_led
+
+  - platform: gpio
+    pin: GPIO15
+    inverted: true
+    id: yellow_led
+
+
+display:
+  platform: tm1621
+  id: tm1621_display
+  update_interval: 5s
+  cs_pin: GPIO17
+  data_pin: GPIO5
+  read_pin: GPIO23
+  write_pin: GPIO18
+  lambda: |-
+    static int n = 0;
+    id(red_led).turn_on();                                //Keep POWER-led ON
+
+    if (id(gpio_relay).state) id(green_led).turn_on();    //Green LED ON if defrost_prevention_Relay is ON
+    else id(green_led).turn_off();
+
+    if (n == 0) {
+       n = 1;
+       it.printf(0, "%.1f", id(heat_exchanger_temp).state);
+       it.display_celsius(true);
+       it.printf(1, "%.1f", id(outdoor_temp).state);
+       it.display_humidity(false);
+       }
+     else {
+       n = 0;
+       it.printf(0, "%.1f", id(wifi_signal_dbm).state);
+       it.display_celsius(false);
+       it.printf(1,"%.1i", id(outdoor_temp_errors)+ id(heat_exchanger_temp_errors));
+       it.display_humidity(false);
+       }
+
+
