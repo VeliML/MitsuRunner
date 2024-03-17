@@ -84,10 +84,10 @@ output:
     inverted: true
     id: green_led
 
-  - platform: gpio
-    pin: GPIO15
-    inverted: true
-    id: yellow_led
+#  - platform: gpio
+#    pin: GPIO15
+#    inverted: true
+#    id: yellow_led
 
 
 display:
@@ -95,7 +95,9 @@ display:
   id: tm1621_display
   update_interval: 5s
   cs_pin: GPIO17
-  data_pin: GPIO5
+  data_pin:
+    number: GPIO5
+    ignore_strapping_warning: true
   read_pin: GPIO23
   write_pin: GPIO18
   lambda: |-
