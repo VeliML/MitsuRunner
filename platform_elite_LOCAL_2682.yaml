@@ -1,0 +1,125 @@
+# Copyright (c) 2021 Veli Matti Lastumäki (Velsku at lampopumput.info),
+#                    Joonas Ihonen (puu at lampopumput.info),
+#                    Ilkka Roivainen (iro at lampopumput.info)
+#
+# Permission is hereby granted, free of charge, to any person obtaining
+# a copy of this software and associated documentation files (the
+# "Software"), to deal in the Software without restriction, including
+# without limitation the rights to use, copy, modify, merge, publish,
+# distribute, sublicense, and/or sell copies of the Software, and to
+# permit persons to whom the Software is furnished to do so, subject to
+# the following conditions:
+#
+# The above copyright notice and this permission notice shall be included
+# in all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+# EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+# MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+# IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+# CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+# TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+# SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+# Enable logging to terminal. You can read log messages over wifi
+logger:
+
+substitutions:
+# Define these values according to your hardware see: https://esphome.io
+  platform_type: 'esp32'
+  board_type:    'nodemcu-32s'
+
+# Addresses for your Dallas DS18B20 temperature sensors - you need to update these
+  dallas_address_heat_exchanger_temp: '0x8501191438ccd428'
+  dallas_address_outdoor_temp:        '0x93000802B67D1E10'
+
+# MQTT topics. These are inside single quotes:
+# If you use IoT Guru: Replace with your own values: uuu = user_id, ccc = client_id, nnn = node_short_identifier.
+# In IoT Guru see Field > Help and copy/paste the line under 'GENERIC MQTT TOPIC'
+# It should look like: "pub/qwertyuiop/asdfghjkl/zxcvbnm/temperature_delta"
+  topic_heatexchanger:                  'pub/uuu/ccc/nnn/heatex_temperature'
+  topic_outdoor:                        'pub/uuu/ccc/nnn/outdoor_temperature'
+  topic_delta:                          'pub/uuu/ccc/nnn/temperature_delta'
+  topic_rssi:                           'pub/uuu/ccc/nnn/rssi'
+  topic_outdoor_errors:                 'pub/uuu/ccc/nnn/error_outdoor'
+  topic_exchanger_errors:               'pub/uuu/ccc/nnn/error_heatex'
+  topic_delta_temperature_latest_min:   'pub/uuu/ccc/nnn/temperature_delta_latest_min'
+  topic_uptime:                         'pub/uuu/ccc/nnn/uptime'
+
+# MQTT topics. Notice that these are inside both single and double quotes:
+  topic_outdoor_raw:                    '"pub/uuu/ccc/nnn/outdoor_raw_temperature"'
+  topic_state:                          '"pub/uuu/ccc/nnn/state"'
+  topic_excess_timer_state:             '"pub/uuu/ccc/nnn/excess_timer_state"'
+  topic_min_heating_timer_state:        '"pub/uuu/ccc/nnn/min_heating_timer_state"'
+  topic_defrosting_timer_state:         '"pub/uuu/ccc/nnn/defrosting_timer_state"'
+  topic_start_defrosting_timer_state:   '"pub/uuu/ccc/nnn/start_defrosting_timer_state"'
+  topic_force_defrost_timer_state:      '"pub/uuu/ccc/nnn/force_defrost_timer_state"'
+  topic_reset_timer_state:              '"pub/uuu/ccc/nnn/reset_timer_state"'
+  topic_error:                          '"pub/uuu/ccc/nnn/error"'
+
+# IO-pins:
+  dallas_pin: 'GPIO25' # Pin for DS18B20 1-wire temperature sensors. Set to the pin number you are using.
+  relay_pin: 'GPIO4' # Pin for controlling relay
+  dallas_power_pin: 'GPIO27'
+
+
+#############################################################################
+#########################Sonoff Th Elite display#############################
+###            two LCD screens alternate every 5 seconds                  ###
+#############################################################################
+###   heat_exchanger_temp  ###########  Wifi-signal        ##################
+###   outdoor_temp         ###########  Dallas error count ##################
+#############################################################################
+### RED LED = POWER #### GREEN LED = Defrost prevention control activated ###
+#############################################################################
+
+output:
+  - platform: gpio
+    pin: GPIO16
+    inverted: true
+    id: red_led
+
+  - platform: gpio
+    pin: GPIO13
+    inverted: true
+    id: green_led
+
+#  - platform: gpio
+#    pin: GPIO15
+#    inverted: true
+#    id: yellow_led
+
+
+display:
+  platform: tm1621
+  id: tm1621_display
+  update_interval: 5s
+  cs_pin: GPIO17
+  data_pin:
+    number: GPIO5
+    ignore_strapping_warning: true
+  read_pin: GPIO23
+  write_pin: GPIO18
+  lambda: |-
+    static int n = 0;
+    id(red_led).turn_on();                                //Keep POWER-led ON
+
+    if (id(gpio_relay).state) id(green_led).turn_on();    //Green LED ON if defrost_prevention_Relay is ON
+    else id(green_led).turn_off();
+
+    if (n == 0) {
+       n = 1;
+       it.printf(0, "%.1f", id(heat_exchanger_temp).state);
+       it.display_celsius(true);
+       it.printf(1, "%.1f", id(outdoor_temp).state);
+       it.display_humidity(false);
+       }
+     else {
+       n = 0;
+       it.printf(0, "%.1f", id(wifi_signal_dbm).state);
+       it.display_celsius(false);
+       it.printf(1,"%.1i", id(outdoor_temp_errors)+ id(heat_exchanger_temp_errors));
+       it.display_humidity(false);
+       }
+
+
