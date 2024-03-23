@@ -26,7 +26,12 @@
 
 # Select used platform (Wemos or Sonoff TH Elite)
 <<: !include platform_wemos.yaml
-#<<: !include platform_elite.yaml
+# <<: !include platform_elite.yaml
+
+# Select configuration of Dallas sensors
+packages:
+  device_base: !include dallas_basic.yaml # Basic configuration
+#  device_base: !include dallas_hub.yaml # Separate Dallas-hubs for minimize restarts
 
 # initialize and define Mitsurunner
 esphome:
@@ -110,12 +115,6 @@ globals:
     initial_value: $topic_outdoor_raw
 
 
-# Temperature sensor (Dallas DS18B20) and its update/measurement interval
-dallas:
-  - pin: $dallas_pin
-    update_interval: 5s
-    id: dallas1
-
 # switch component to control defrost prevention relay
 # if switch on --> Relay actively driven
 # if switch off --> Relay in default state
@@ -170,84 +169,14 @@ switch:
       then:
           lambda: !lambda "id(G_manual_defrosting) = false;"
 
-# Temperature sensor (Dallas DS18B20) details. 
-# You need to check temperature sensors IDs by starting this software and checking IDs from log printing to terminal. 
-# Copy IDs from terminal log to platform.yaml file and heat one sensor. Then check which sensor it was and use it for the corresponding topic
+
 sensor:
-  - platform: dallas
-    address: $dallas_address_heat_exchanger_temp # Remember to define this on platform.yaml
- #   index: 0    #Use index instead of address only for testing
-    name: "Temperature - heat exchanger"
-    id: heat_exchanger_temp
-    accuracy_decimals: 1
-    state_topic: $topic_heatexchanger
-    filters:
-      - filter_out: nan
-      - filter_out: 85.0
-      - exponential_moving_average:
-          # Be careful when tweaking this filter, too small alpha may delay defrosting too much
-          alpha: 0.05
-          send_every: 6 #30s
-    on_raw_value:
-      then:
-        lambda: !lambda |-
-            if ((isnan(x)) || (x > 84.0)) {
-                if ((id(heat_exchanger_temp_errors) += 1) == 1000) id(heat_exchanger_temp_errors) = 10;
-            }
-
-  - platform: dallas
-    address: $dallas_address_outdoor_temp # Remember to define this on platform.yaml
- #   index: 1   #Use index instead of address only for testing
-    name: "Temperature - outdoor"
-    id: outdoor_temp
-    accuracy_decimals: 1
-    state_topic: $topic_outdoor
-    filters:
-      - filter_out: nan
-      - filter_out: 85.0
-      - exponential_moving_average:
-          alpha: 0.01
-          send_every: 6 #30s
-          send_first_at: 2 #10s
-    on_raw_value:
-      then:
-        lambda: !lambda |-
-            // Calculate exponential moving average for outdoor temperature
-            // Alpha is adjustable, similar to one in the built-in exponential_moving_average filter
-            static const float alpha = 0.1;
-            static bool first_time = true;
-
-            if ((isnan(x)) || (x > 84.0))  { //Check if non-valid Dallas value
-                if ((id(outdoor_temp_errors) += 1) == 1000) id(outdoor_temp_errors) = 10;
-            }
-            // Valid Dallas value received, do not use filter until first value received
-            else if(first_time) {
-                id(G_outdoor_temp_filtered) = x;
-                first_time = false;
-            }
-            else {
-                id(G_outdoor_temp_filtered) = id(G_outdoor_temp_filtered) * (1.0 - alpha) + x * alpha;
-            }
-
   # To show state on the web server
   - platform: template
     name: "State"
     id: state_template
     lambda: "return id(G_state);"
 
-# Additional sensors can be added by defining new sensors - uncomment example below:
-# e.g. for having another sensors to measure outdoor temperature from different place. (not used by logic)
-  # - platform: dallas
-  #   address: $dallas_address_test
-  #   name: "test_temperature"
-  #   id: test_temperature
-  #   accuracy_decimals: 1
-  #   state_topic: $topic_test
-  #   filters:
-  #     - filter_out: nan
-  #     - exponential_moving_average:
-  #         alpha: 0.01
-  #         send_every: 2
 
  # RSSI monitoring, reports the WiFi signal strength in dBm
   - platform: wifi_signal
