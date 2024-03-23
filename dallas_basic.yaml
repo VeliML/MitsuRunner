@@ -1,0 +1,66 @@
+# Temperature sensor (Dallas DS18B20) and its update/measurement interval
+dallas:
+  - pin: $dallas_pin
+    update_interval: 5s
+    id: dallas1
+
+
+# Temperature sensor (Dallas DS18B20) details. 
+# You need to check temperature sensors IDs by starting this software and checking IDs from log printing to terminal. 
+# Copy IDs from terminal log to platform.yaml file and heat one sensor. Then check which sensor it was and use it for the corresponding topic
+sensor:
+  - platform: dallas
+    address: $dallas_address_heat_exchanger_temp # Remember to define this on platform.yaml
+ #   index: 0    #Use index instead of address only for testing
+    name: "Temperature - heat exchanger"
+    id: heat_exchanger_temp
+    accuracy_decimals: 1
+    state_topic: $topic_heatexchanger
+    filters:
+      - filter_out: nan
+      - filter_out: 85.0
+      - exponential_moving_average:
+          # Be careful when tweaking this filter, too small alpha may delay defrosting too much
+          alpha: 0.05
+          send_every: 6 #30s
+    on_raw_value:
+      then:
+        lambda: !lambda |-
+            if ((isnan(x)) || (x > 84.0)) {
+                if ((id(heat_exchanger_temp_errors) += 1) == 1000) id(heat_exchanger_temp_errors) = 10;
+            }
+
+  - platform: dallas
+    address: $dallas_address_outdoor_temp # Remember to define this on platform.yaml
+ #   index: 1   #Use index instead of address only for testing
+    name: "Temperature - outdoor"
+    id: outdoor_temp
+    accuracy_decimals: 1
+    state_topic: $topic_outdoor
+    filters:
+      - filter_out: nan
+      - filter_out: 85.0
+      - exponential_moving_average:
+          alpha: 0.01
+          send_every: 6 #30s
+          send_first_at: 2 #10s
+    on_raw_value:
+      then:
+        lambda: !lambda |-
+            // Calculate exponential moving average for outdoor temperature
+            // Alpha is adjustable, similar to one in the built-in exponential_moving_average filter
+            static const float alpha = 0.1;
+            static bool first_time = true;
+
+            if ((isnan(x)) || (x > 84.0))  { //Check if non-valid Dallas value
+                if ((id(outdoor_temp_errors) += 1) == 1000) id(outdoor_temp_errors) = 10;
+            }
+            // Valid Dallas value received, do not use filter until first value received
+            else if(first_time) {
+                id(G_outdoor_temp_filtered) = x;
+                first_time = false;
+            }
+            else {
+                id(G_outdoor_temp_filtered) = id(G_outdoor_temp_filtered) * (1.0 - alpha) + x * alpha;
+            }
+
