@@ -1,0 +1,88 @@
+# Copyright (c) 2021 Veli Matti Lastumäki (Velsku at lampopumput.info),
+#                    Joonas Ihonen (puu at lampopumput.info),
+#                    Ilkka Roivainen (iro at lampopumput.info)
+#
+# Permission is hereby granted, free of charge, to any person obtaining
+# a copy of this software and associated documentation files (the
+# "Software"), to deal in the Software without restriction, including
+# without limitation the rights to use, copy, modify, merge, publish,
+# distribute, sublicense, and/or sell copies of the Software, and to
+# permit persons to whom the Software is furnished to do so, subject to
+# the following conditions:
+#
+# The above copyright notice and this permission notice shall be included
+# in all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+# EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+# MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+# IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+# CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+# TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+# SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+
+# For Mitsurunnwer HW-verification, compatible with ESPHome version 2024.6.6 or newer
+# Only for Wemos_HW (not for Sonoff Elite)
+# Shows IDs of connected Dallas sensors
+# Switches relay: 1sec on, 4sec off
+
+
+esphome:
+  name: mitsurunner-hw-check
+# HW-platform
+  platform: esp8266
+  board: d1_mini
+
+substitutions:
+
+# Set the GPIO-pins according to your HW-connections
+  dallas_pin: 'D3' # Pin for DS18B20 1-wire temperature sensors. Set to the pin number you are using.
+  relay_pin:  'D1' # Pin for controlling relay
+ 
+# Dallas_IDs can be found in the logs, when the IDs are updated, the temperatures are shown in the logs
+  dallas_a: '0xaaaaaaaaaaaaaa28'      
+  dallas_b: '0xbbbbbbbbbbbbbb28'  
+
+# Logs on
+logger:
+
+# Temperature sensor (Dallas DS18B20)
+one_wire:
+  - platform: gpio
+    pin: $dallas_pin
+#    pin: D3  # dallas_pin
+
+
+sensor:
+  - platform: dallas_temp
+    update_interval: 10s
+    name: "Dallas_1"
+    address: $dallas_a
+
+  - platform: dallas_temp
+    update_interval: 10s
+    name: "Dallas_2"
+    address: $dallas_b
+
+
+# Relay PIN
+switch:
+  - platform: gpio
+    pin: $relay_pin
+    name: "rele"
+    id: gpio_rele
+
+status_led:
+  pin:
+    number: D4
+    inverted: True
+
+# Turn relay ON/OFF
+interval:
+  - interval: 5s
+
+    then:
+      - switch.turn_on: gpio_rele
+      - delay: 0.5s
+      - switch.turn_off: gpio_rele
