@@ -1,17 +1,17 @@
-# Temperature sensor (Dallas DS18B20) and its update/measurement interval
-dallas:
-  - pin: $dallas_pin
-    update_interval: 5s
-    id: dallas1
+# NOTE: Suitable with ESPHome version 2024.6.6 or later
 
+# Temperature sensor (Dallas DS18B20)
+one_wire:
+  - platform: gpio
+    pin: $dallas_pin
 
 # Temperature sensor (Dallas DS18B20) details. 
 # You need to check temperature sensors IDs by starting this software and checking IDs from log printing to terminal. 
 # Copy IDs from terminal log to platform.yaml file and heat one sensor. Then check which sensor it was and use it for the corresponding topic
 sensor:
-  - platform: dallas
+  - platform: dallas_temp
+    update_interval: 5s
     address: $dallas_address_heat_exchanger_temp # Remember to define this on platform.yaml
- #   index: 0    #Use index instead of address only for testing
     name: "Temperature - heat exchanger"
     id: heat_exchanger_temp
     accuracy_decimals: 1
@@ -30,9 +30,9 @@ sensor:
                 if ((id(heat_exchanger_temp_errors) += 1) == 1000) id(heat_exchanger_temp_errors) = 10;
             }
 
-  - platform: dallas
+  - platform: dallas_temp
+    update_interval: 5s
     address: $dallas_address_outdoor_temp # Remember to define this on platform.yaml
- #   index: 1   #Use index instead of address only for testing
     name: "Temperature - outdoor"
     id: outdoor_temp
     accuracy_decimals: 1
