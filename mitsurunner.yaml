@@ -20,20 +20,8 @@
 # CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-
-<<: !include secrets.yaml
-
-
-# Select used platform (Wemos or Sonoff TH Elite)
-<<: !include platform_wemos.yaml
-#<<: !include platform_elite.yaml
-
-# Select configuration of Dallas sensors
-packages:
-  device_base: !include dallas_basic.yaml # basic-configuration
-#  device_base: !include dallas_hub.yaml # separate Dallas-hubs for minimize resets
-
 # initialize and define Mitsurunner
+
 esphome:
   name: mitsurunner
   platform: $platform_type
@@ -185,32 +173,43 @@ switch:
       then:
           lambda: !lambda "id(G_manual_defrosting) = false;"
 
+#####################################
+
+text_sensor:
+  # To publish state to HA
+  - platform: template
+    name: "State_text"
+    id: state_text_template
+    lambda: |-
+      if ((id(G_state)) == ST_LONG_DEFROSTING_STARTED) return {"Long defrosting"};   
+      else if ((id(G_state)) == ST_RESET) return {"Reset"};
+      else if ((id(G_state)) == ST_OFF) return {"Off"};
+      else if ((id(G_state)) == ST_DEFROSTING_STARTED) return {"Defrosting"};
+      else if ((id(G_state)) == ST_HEATING_MIN_TIME) return {"Forced heating"};
+      else if ((id(G_state)) == ST_IDLE) return {"Idle"};
+      else if ((id(G_state)) == ST_TEMP_EXCEEDED) return {"Temp exceeded"};
+      else if ((id(G_state)) == ST_TEMP_EXCEEDED_TEMP_DECREASING) return {"Temp exceeded - decreasing"};
+      else if ((id(G_state)) == ST_START_DEFROSTING) return {"Starting defrosting"};
+      return {"Internal error"};
+
+##################################
+
+
 
 sensor:
   # To show state on the web server
   - platform: template
     name: "State"
     id: state_template
+    unit_of_measurement: " "
     lambda: "return id(G_state);"
 
-
- # RSSI monitoring, reports the WiFi signal strength in dBm
-  - platform: wifi_signal
-    name: "WiFi Signal dBm"
-    id: wifi_signal_dbm
-    accuracy_decimals: 0
-    state_topic: $topic_rssi
-    update_interval: 15s
-    filters:
-    - sliding_window_moving_average:
-        window_size: 8     #2 min
-        send_every: 8      #2 min
 
 # Error counters for Dallas sensor errors
   - platform: template
     id: report_outdoor_errors
     name: "Errors - outdoor temperature"
-    state_topic: $topic_outdoor_errors
+    unit_of_measurement: " "
     update_interval: 120s
     lambda: |-
         return id(outdoor_temp_errors);
@@ -218,7 +217,7 @@ sensor:
   - platform: template
     id: report_heat_exchanger_errors
     name: "Errors - heat exchanger temperature"
-    state_topic: $topic_exchanger_errors
+    unit_of_measurement: " "
     update_interval: 120s
     lambda: |-
         return id(heat_exchanger_temp_errors);
@@ -227,7 +226,9 @@ sensor:
   - platform: uptime
     id: uptime_counter
     name: "Uptime"
-    state_topic: $topic_uptime
+    filters:
+      - lambda: return x / 60.0;   // uptime in minutes
+    unit_of_measurement: "min"
     update_interval: 60s
 
 
@@ -238,16 +239,16 @@ sensor:
   - platform: template
     id: state_machine
     name: "Delta(temperature)"
-    state_topic: $topic_delta
+    unit_of_measurement: "°C"
     update_interval: 30s
 # This C++ code checks if all requirements are fullfilled to trigger defrosting and triggers it then.
     lambda: !lambda |-
         float temperature_delta = (id(G_outdoor_temp_filtered) - id(heat_exchanger_temp).state);
 
-        id(mqtt_client).publish(id(G_TOPIC_STATE), to_string(id(G_state)));
+        //**id(mqtt_client).publish(id(G_TOPIC_STATE), to_string(id(G_state)));
 
         // Raw outdoor temperature value for debugging
-        id(mqtt_client).publish(id(G_TOPIC_OUTDOOR_TEMPERATURE_RAW), to_string(id(outdoor_temp).raw_state));
+        //**id(mqtt_client).publish(id(G_TOPIC_OUTDOOR_TEMPERATURE_RAW), to_string(id(outdoor_temp).raw_state));
 
         switch(id(G_state)) {
 
@@ -258,7 +259,7 @@ sensor:
               // If outdoor temperature average exceeds the threshold or Mitsurunner is disabled, switch off the defrost hack logic
                     if (id(heat_exchanger_temp).state > HEAT_EXCHANGER_MAX_TEMPERATURE ||
                             id(outdoor_temp).state > OUTDOOR_TEMPERATURE_TO_ENTER_OFF_STATE ||
-                            id(G_Runner_ON) == false) {
+                        id(G_Runner_ON) == false) {
                         id(enter_Off).execute();
                     }
                     // If defrosting is going on
@@ -273,8 +274,8 @@ sensor:
 
             case ST_IDLE:
                 // If outdoor temperature average exceeds the threshold or Mitsurunner is disabled, switch off the defrost hack logic
-                if (id(heat_exchanger_temp).state > HEAT_EXCHANGER_MAX_TEMPERATURE ||
-                        id(outdoor_temp).state > OUTDOOR_TEMPERATURE_TO_ENTER_OFF_STATE ||
+                    if (id(heat_exchanger_temp).state > HEAT_EXCHANGER_MAX_TEMPERATURE ||
+                            id(outdoor_temp).state > OUTDOOR_TEMPERATURE_TO_ENTER_OFF_STATE ||
                         id(G_Runner_ON) == false) {
                     id(enter_Off).execute();
                 }
@@ -292,7 +293,7 @@ sensor:
                 // Enter normal defrost hack mode if outside temperature is low enough and Mitsurunner is enabled
                 if(id(heat_exchanger_temp).state < HEAT_EXCHANGER_MAX_TEMPERATURE &&
                         id(outdoor_temp).state < OUTDOOR_TEMPERATURE_TO_EXIT_OFF_STATE &&
-                        id(G_Runner_ON) == true) {
+                        id(G_Runner_ON) == true){
                     id(schedule_forced_defrosting).execute();
                     id(enter_Idle).execute();
                 }
@@ -377,7 +378,7 @@ sensor:
   - platform: template
     id: delta_temperature_min_from_last_values
     name: "Delta(temperature) direction"
-    state_topic: $topic_delta_temperature_latest_min
+##**    state_topic: $topic_delta_temperature_latest_min
     update_interval: 30s
     internal: true
     lambda: |-
@@ -391,7 +392,7 @@ sensor:
 script:
 
 ############## Initialize device in first boot ###############
-  - id: initialize_runner
+  - id: initialize_runner  
     then:
     # Delay state machine start so that system can connect wifi & MQTT before starting logics
     - delay: !lambda "return INITIALIZE_DELAY * 1000;"
@@ -568,9 +569,9 @@ script:
                 break;
         }
         
-        if ( send_message ) {
-            id(mqtt_client).publish(id_timer_topic, id(G_timer_action));
-        }
+        //*if ( send_message ) {
+        //*    id(mqtt_client).publish(id_timer_topic, id(G_timer_action));
+        //*}
 
 
 # Script for forced defrosting
@@ -580,11 +581,11 @@ script:
     mode: restart #timer will be restarted from the beginning allways when called --> starts always again           
     then:
     - lambda: !lambda |-
-        id(mqtt_client).publish(id(G_TOPIC_FORCE_DEFROST_TIMER_STATE), to_string(TMR_NOT_PASSED)); // #To indicate restarts
-        id(mqtt_client).publish(id(G_TOPIC_FORCE_DEFROST_TIMER_STATE), to_string(TMR_RUNNING));
+        //**id(mqtt_client).publish(id(G_TOPIC_FORCE_DEFROST_TIMER_STATE), to_string(TMR_NOT_PASSED)); // #To indicate restarts
+        //**id(mqtt_client).publish(id(G_TOPIC_FORCE_DEFROST_TIMER_STATE), to_string(TMR_RUNNING));
         id(G_max_heating_time_passed) = false;
     - delay: !lambda "return MAX_HEATING_TIME * 60000;"
     - lambda: !lambda |-
-        id(mqtt_client).publish(id(G_TOPIC_FORCE_DEFROST_TIMER_STATE), to_string(TMR_PASSED)); 
+        //**id(mqtt_client).publish(id(G_TOPIC_FORCE_DEFROST_TIMER_STATE), to_string(TMR_PASSED)); 
         id(G_max_heating_time_passed) = true;
 
