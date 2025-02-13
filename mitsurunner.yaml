@@ -135,7 +135,7 @@ switch:
     id: dallas_power
 
   - platform: template
-    name: "Runner_ON"
+    name: " Mitsurunner enabled"
     id: Runner_ON
     restore_mode: RESTORE_DEFAULT_ON
     lambda: "return id(G_Runner_ON);"
