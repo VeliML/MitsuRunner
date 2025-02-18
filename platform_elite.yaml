@@ -22,6 +22,19 @@
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ###########################################################################
+##        Home Assistant and Logger settings                             ##
+##        ----------------------------------------------------------     ##
+###########################################################################
+
+api:                                       # !! If home Assistant in not used detete this line 
+  reboot_timeout: $common_reboot_timeout   # !! If home Assistant in not used detete this line 
+
+########
+
+logger:          #  After installation and testing phase it may be wise to reduce debug communication
+  level: INFO    # by removing comment (#) from this line
+
+###########################################################################
 ##        This module specifies HW of your SonOff Elite Mitsurunner      ##
 ##        ----------------------------------------------------------     ##
 ##  ! updateIDs of your Dallas DS18B20 sensors                           ##
