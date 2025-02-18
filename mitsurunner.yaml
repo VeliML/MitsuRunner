@@ -24,6 +24,7 @@
 
 esphome:
   name: mitsurunner
+  friendly_name: Mitsurunner
   platform: $platform_type
   board: $board_type
   on_boot: 
@@ -31,9 +32,6 @@ esphome:
   - switch.turn_on: dallas_power  #for Sonoff Elite
   - script.execute: schedule_forced_defrosting
   - script.execute: initialize_runner
-  includes:
-    - constants.h
-    - state.h
 
 # global variables and their initial values
 globals:
