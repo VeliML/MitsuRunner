@@ -80,4 +80,11 @@ packages:
 
   core_base: !include mitsurunner.yaml   ## MUST be included
 
+#######################################################
+esphome:  
+  includes:
+    - constants.h
+    - state.h
+
+
 
