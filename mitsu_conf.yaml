@@ -55,7 +55,7 @@ packages:
 ################################################
 
 #  dallas_base: !include dallas_basic.yaml           ## basic-configuration
-  dallas_base: !include dallas_hub.yaml              ## minimize restarts, no more than 2 Dallas-sensor
+  dallas_base: !include dallas_hub.yaml              ## minimize restarts
 #  dallas_base: !include dallas_hub_status_Led.yaml  ## dallas_hub.yaml with on-board status_LED (only for Wemos)
 
 ############################################################
@@ -68,12 +68,6 @@ packages:
 #  mqtt_base: !include mqtt_Guru.yaml         ## IoT-Guru server
   mqtt_base: !include mqtt_disabled.yaml     ## NOTE! This must be included if MQTT is not used
  
-##################################################
-#### Enable if Homeassistant in use           #### 
-################################################## 
-
-  HA-base: !include homeassistant.yaml         ## Enable if HomeAssistanty in use
-
 ######################################################
 #### Mitsurunner core code, Do not touch!!        ####
 ######################################################
