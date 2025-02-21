@@ -26,13 +26,13 @@
 ##        ----------------------------------------------------------     ##
 ###########################################################################
 
-api:                                       # !! If home Assistant in not used detete this line 
-  reboot_timeout: $common_reboot_timeout   # !! If home Assistant in not used detete this line 
+api:                   # !! If home Assistant in not used detete this line 
+  reboot_timeout: 0s   # !! If home Assistant in not used detete this line 
 
 ########
 
-logger:          #  After installation and testing phase it may be wise to reduce debug communication
-  level: INFO    # by removing comment (#) from this line
+logger:  
+  level: INFO    # by removing this line you will get more debug information
 
 ###########################################################################
 ##        This module specifies HW of your WeMos D1 mini Mitsurunner     ##
@@ -42,6 +42,12 @@ logger:          #  After installation and testing phase it may be wise to reduc
 ##  hardware platform (preconfigured for WeMos D1 mini)                  ##
 ###########################################################################
 
+# Define these values according to your hardware see: https://esphome.io
+esp8266:               # For Wemos
+  board: nodemcuv2     # For Wemos
+
+###########################################################################
+
 substitutions:
 
 # Common reboot timeout for WiFi, MQTT and HomeAssiant. Change value if needed.
@@ -49,18 +55,13 @@ substitutions:
   common_reboot_timeout: '360min'
 
 # Addresses for your Dallas DS18B20 temperature sensors - you need to update these
-  dallas_address_heat_exchanger_temp: '0x93011913f7d58628'
-  dallas_address_outdoor_temp:        '0x4501191b6fa33d28'
+  dallas_address_heat_exchanger_temp: '0x2dd4e3391e64ff28'     # '0x93011913f7d58628'
+  dallas_address_outdoor_temp:        '0x2dd4e3391e64ff28'     # '0x4501191b6fa33d28'
 
 # IO-pins:
   dallas_pin: 'D3' # Pin for DS18B20 1-wire temperature sensors. Set to the pin number you are using.
   relay_pin:  'D1' # Pin for controlling relay
   dallas_power_pin: 'D4' # Built-in LED
 
-# Define these values according to your hardware see: https://esphome.io
-  platform_type: 'esp8266'
-  board_type:    'd1_mini'
 
-logger:          #  After installation and testing phase it may be wise to reduce debug communication
-#  level: INFO   # by removing comment (#) from this line
 
