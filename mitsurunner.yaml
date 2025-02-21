@@ -25,8 +25,7 @@
 esphome:
   name: mitsurunner
   friendly_name: Mitsurunner
-  platform: $platform_type
-  board: $board_type
+  
   on_boot: 
   - switch.turn_off: gpio_relay
   - switch.turn_on: dallas_power  #for Sonoff Elite
