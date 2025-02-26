@@ -191,8 +191,6 @@ text_sensor:
 
 ##################################
 
-
-
 sensor:
   # To show state on the web server
   - platform: template
@@ -201,6 +199,16 @@ sensor:
     unit_of_measurement: " "
     lambda: "return id(G_state);"
 
+# RSSI monitoring, reports the WiFi signal strength in dBm
+  - platform: wifi_signal
+    name: "WiFi Signal dBm"
+    id: wifi_signal_dbm
+    accuracy_decimals: 0
+    update_interval: 15s
+    filters:
+    - sliding_window_moving_average:
+        window_size: 8     #2 min
+        send_every: 8      #2 min
 
 # Error counters for Dallas sensor errors
   - platform: template
