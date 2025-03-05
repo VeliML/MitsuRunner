@@ -1,0 +1,103 @@
+# Copyright (c) 2021 Veli Matti Lastumäki (Velsku at lampopumput.info),
+#                    Joonas Ihonen (puu at lampopumput.info),
+#                    Ilkka Roivainen (iro at lampopumput.info)
+#
+# Permission is hereby granted, free of charge, to any person obtaining
+# a copy of this software and associated documentation files (the
+# "Software"), to deal in the Software without restriction, including
+# without limitation the rights to use, copy, modify, merge, publish,
+# distribute, sublicense, and/or sell copies of the Software, and to
+# permit persons to whom the Software is furnished to do so, subject to
+# the following conditions:
+#
+# The above copyright notice and this permission notice shall be included
+# in all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+# EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+# MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+# IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+# CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+# TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+# SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+
+#############################################################
+##  This module is for IoT-Guru  MQTT-server               ##
+##  --------------------------------------                 ##
+##  specify MQTT-server details                            ##
+##  specify MQTT-topics                                    ##
+#############################################################
+
+
+############## IoT-Guru ########################
+# Check correct values from your IoT Guru account
+# Note: IoT Guru does not support trace-log over MQTT, eg. USB-connection is needed for trace log.
+
+mqtt:
+  broker: iotguru.cloud    # known IPs of iotguru.cloud 116.203.207.226, 195.201.219.208
+  id: mqtt_client
+  username: ....           # user short identifier
+  client_id: ....          # device short identifier
+  password: ....           # device key
+ 
+  reboot_timeout: $common_reboot_timeout   # 0s disables MQTT reboot_timeout
+
+
+  topic_prefix: null    # trace log is not send to IoT Guru server
+  log_topic: null       # no trace-logs over MQTT (function is not supported in IoT-Guru)
+  discovery: false      # HomeAssistant is not used
+
+###############################################
+
+substitutions:
+ 
+# "prefix" = topic of IoT-Guru node e.g 'pub/user_id/client_id/node_short_identifier'.
+# Can be found from IoT Guru Field/Help under 'GENERIC MQTT TOPIC'
+# It should look like: 'pub/tQAz8YAINFNft0R7Q/l4xFwCiKxKUWQft0R7Q/rEWtD1fYqnggHMR7Q'
+
+  prefix:        'pub/.../.../...'
+
+# MQTT topics. Notice that these are inside both single and double quotes e.g.'"xxx"'
+# Change field names (kenno, ....) if needed.
+ 
+  topic_heatexchanger:                  '"$prefix/kenno"'
+  topic_outdoor:                        '"$prefix/ulkoilma"'
+  topic_delta:                          '"$prefix/delta"'
+  topic_rssi:                           '"$prefix/rssi"'
+  topic_outdoor_errors:                 '"$prefix/kennovirhe"'
+  topic_exchanger_errors:               '"$prefix/ulkovirhe"'
+  topic_state:                          '"$prefix/tila"'
+  topic_uptime:                         '"$prefix/uptime"'
+
+# topics below are needed only for deeper debug
+
+  topic_delta_temperature_latest_min:   '"$prefix/temperature_delta_latest_min"' 
+  topic_outdoor_raw:                    '"$prefix/outdoor_raw_temperature"'
+  topic_excess_timer_state:             '"$prefix/excess_timer_state"'
+  topic_min_heating_timer_state:        '"$prefix/min_heating_timer_state"'
+  topic_defrosting_timer_state:         '"$prefix/defrosting_timer_state"'
+  topic_start_defrosting_timer_state:   '"$prefix/start_defrosting_timer_state"'
+  topic_force_defrost_timer_state:      '"$prefix/force_defrost_timer_state"'
+  topic_reset_timer_state:              '"$prefix/reset_timer_state"'
+  topic_error:                          '"$prefix/error"'
+
+###############################################
+
+interval:
+  - interval: 60s
+    then:
+      - lambda: !lambda |-
+            id(mqtt_client).publish($topic_outdoor, value_accuracy_to_string(id(outdoor_temp).state,1));
+            id(mqtt_client).publish($topic_heatexchanger, value_accuracy_to_string(id(heat_exchanger_temp).state,1));
+            id(mqtt_client).publish($topic_delta, value_accuracy_to_string(id(state_machine).state,1));
+
+            id(mqtt_client).publish($topic_exchanger_errors, to_string(id(heat_exchanger_temp_errors)));
+            id(mqtt_client).publish($topic_outdoor_errors, to_string(id(outdoor_temp_errors)));
+
+            id(mqtt_client).publish($topic_rssi, value_accuracy_to_string(id(wifi_signal_dbm).state,0));
+            id(mqtt_client).publish($topic_uptime, value_accuracy_to_string(id(uptime_counter).state,0));
+
+            id(mqtt_client).publish($topic_state, to_string(id(G_state)));
+
+

@@ -1,0 +1,91 @@
+# Copyright (c) 2021 Veli Matti Lastumäki (Velsku at lampopumput.info),
+#                    Joonas Ihonen (puu at lampopumput.info),
+#                    Ilkka Roivainen (iro at lampopumput.info)
+#
+# Permission is hereby granted, free of charge, to any person obtaining
+# a copy of this software and associated documentation files (the
+# "Software"), to deal in the Software without restriction, including
+# without limitation the rights to use, copy, modify, merge, publish,
+# distribute, sublicense, and/or sell copies of the Software, and to
+# permit persons to whom the Software is furnished to do so, subject to
+# the following conditions:
+#
+# The above copyright notice and this permission notice shall be included
+# in all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+# EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+# MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+# IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+# CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+# TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+# SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+
+#############################################################
+##  This module is for generic MQTT-server                 ##
+##  --------------------------------------                 ##
+##  specify MQTT-server details                            ##
+##  specify MQTT-topics                                    ##
+#############################################################
+
+
+mqtt:
+  broker: 192.168.x.yy       #IP of Local MQTT-server  
+  username: ......
+  client_id: .....
+  password: ......
+
+  id: mqtt_client
+
+  reboot_timeout: $common_reboot_timeout     # 0s disables MQTT reboot_timeout
+
+#######################################
+
+substitutions:
+
+  prefix:        'mitsu'    # MQTT topic prefix, change if needed
+  
+# MQTT topics. Notice that these are inside both single and double quotes e.g.'"xxx"'
+
+  topic_heatexchanger:                  '"$prefix/kenno"'
+  topic_outdoor:                        '"$prefix/ulkoilma"'
+  topic_delta:                          '"$prefix/delta"'
+  topic_rssi:                           '"$prefix/rssi"'
+  topic_outdoor_errors:                 '"$prefix/kennovirhe"'
+  topic_exchanger_errors:               '"$prefix/ulkovirhe"'
+  topic_state:                          '"$prefix/tila"'
+  topic_uptime:                         '"$prefix/uptime"'
+
+# topics below are needed only for deeper debug
+
+  topic_delta_temperature_latest_min:   '"$prefix/temperature_delta_latest_min"'
+  topic_outdoor_raw:                    '"$prefix/outdoor_raw_temperature"'
+  topic_excess_timer_state:             '"$prefix/excess_timer_state"'
+  topic_min_heating_timer_state:        '"$prefix/min_heating_timer_state"'
+  topic_defrosting_timer_state:         '"$prefix/defrosting_timer_state"'
+  topic_start_defrosting_timer_state:   '"$prefix/start_defrosting_timer_state"'
+  topic_force_defrost_timer_state:      '"$prefix/force_defrost_timer_state"'
+  topic_reset_timer_state:              '"$prefix/reset_timer_state"'
+  topic_error:                          '"$prefix/error"'
+
+###########################################
+
+
+interval:
+  - interval: 60s
+    then:
+      - lambda: !lambda |-
+            id(mqtt_client).publish($topic_outdoor, value_accuracy_to_string(id(outdoor_temp).state,1));
+            id(mqtt_client).publish($topic_heatexchanger, value_accuracy_to_string(id(heat_exchanger_temp).state,1));
+            id(mqtt_client).publish($topic_delta, value_accuracy_to_string(id(state_machine).state,1));
+
+            id(mqtt_client).publish($topic_exchanger_errors, to_string(id(heat_exchanger_temp_errors)));
+            id(mqtt_client).publish($topic_outdoor_errors, to_string(id(outdoor_temp_errors)));
+
+            id(mqtt_client).publish($topic_rssi, value_accuracy_to_string(id(wifi_signal_dbm).state,0));
+            id(mqtt_client).publish($topic_uptime, value_accuracy_to_string(id(uptime_counter).state,0));
+
+            id(mqtt_client).publish($topic_state, to_string(id(G_state)));
+
+
