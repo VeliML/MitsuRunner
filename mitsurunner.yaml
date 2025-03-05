@@ -264,7 +264,7 @@ sensor:
               // If outdoor temperature average exceeds the threshold or Mitsurunner is disabled, switch off the defrost hack logic
                     if (id(heat_exchanger_temp).state > HEAT_EXCHANGER_MAX_TEMPERATURE ||
                             id(outdoor_temp).state > OUTDOOR_TEMPERATURE_TO_ENTER_OFF_STATE ||
-                        id(G_Runner_ON) == false) {
+                            id(G_Runner_ON) == false) {
                         id(enter_Off).execute();
                     }
                     // If defrosting is going on
@@ -281,7 +281,7 @@ sensor:
                 // If outdoor temperature average exceeds the threshold or Mitsurunner is disabled, switch off the defrost hack logic
                     if (id(heat_exchanger_temp).state > HEAT_EXCHANGER_MAX_TEMPERATURE ||
                             id(outdoor_temp).state > OUTDOOR_TEMPERATURE_TO_ENTER_OFF_STATE ||
-                        id(G_Runner_ON) == false) {
+                            id(G_Runner_ON) == false) {
                     id(enter_Off).execute();
                 }
                 // If maximum heating time exceeded, start defrosting immediately
@@ -298,7 +298,7 @@ sensor:
                 // Enter normal defrost hack mode if outside temperature is low enough and Mitsurunner is enabled
                 if(id(heat_exchanger_temp).state < HEAT_EXCHANGER_MAX_TEMPERATURE &&
                         id(outdoor_temp).state < OUTDOOR_TEMPERATURE_TO_EXIT_OFF_STATE &&
-                        id(G_Runner_ON) == true){
+                        id(G_Runner_ON) == true) {
                     id(schedule_forced_defrosting).execute();
                     id(enter_Idle).execute();
                 }
@@ -397,6 +397,7 @@ sensor:
 script:
 
 ############## Initialize device in first boot ###############
+
   - id: initialize_runner  
     then:
     # Delay state machine start so that system can connect wifi & MQTT before starting logics
