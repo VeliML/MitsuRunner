@@ -21,47 +21,44 @@
 # TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-# Enable logging to terminal. You can read log messages over wifi
-logger:
+###########################################################################
+##        Home Assistant and Logger settings                             ##
+##        ----------------------------------------------------------     ##
+###########################################################################
+# Enable/disabe HomeAssistant
+#api:                   # !! If home Assistant in use remove comment (#)
+#  reboot_timeout: 0s   # !! If home Assistant in use remove comment (#)
+#####################
+# Select logger-level
+logger:          #  After installation and testing phase it may be wise to reduce debug communication
+  level: INFO    # by adding comment (#) at the begining of this line more log-info
 
-substitutions:
+###########################################################################
+##        This module specifies HW of your SonOff Elite Mitsurunner      ##
+##        ----------------------------------------------------------     ##
+##  ! updateIDs of your Dallas DS18B20 sensors                           ##
+##  ! update used IO-pins                                                ##
+##  hardware platform (preconfigured for SonOff)                         ##
+##########################################################################
+
 # Define these values according to your hardware see: https://esphome.io
-  platform_type: 'esp32'
-  board_type:    'nodemcu-32s'
+esp32:
+  board: nodemcu-32s
+  
+###########################################################################
+substitutions:
+
+# Common reboot timeout for WiFi, MQTT and HomeAssiant. Change value if needed.
+  common_reboot_timeout: '360min'
 
 # Addresses for your Dallas DS18B20 temperature sensors - you need to update these
   dallas_address_heat_exchanger_temp: '0x8501191438ccd428'
-  dallas_address_outdoor_temp:        '0x93000802B67D1E10'
-
-# MQTT topics. These are inside single quotes:
-# If you use IoT Guru: Replace with your own values: uuu = user_id, ccc = client_id, nnn = node_short_identifier.
-# In IoT Guru see Field > Help and copy/paste the line under 'GENERIC MQTT TOPIC'
-# It should look like: "pub/qwertyuiop/asdfghjkl/zxcvbnm/temperature_delta"
-  topic_heatexchanger:                  'pub/uuu/ccc/nnn/heatex_temperature'
-  topic_outdoor:                        'pub/uuu/ccc/nnn/outdoor_temperature'
-  topic_delta:                          'pub/uuu/ccc/nnn/temperature_delta'
-  topic_rssi:                           'pub/uuu/ccc/nnn/rssi'
-  topic_outdoor_errors:                 'pub/uuu/ccc/nnn/error_outdoor'
-  topic_exchanger_errors:               'pub/uuu/ccc/nnn/error_heatex'
-  topic_delta_temperature_latest_min:   'pub/uuu/ccc/nnn/temperature_delta_latest_min'
-  topic_uptime:                         'pub/uuu/ccc/nnn/uptime'
-
-# MQTT topics. Notice that these are inside both single and double quotes:
-  topic_outdoor_raw:                    '"pub/uuu/ccc/nnn/outdoor_raw_temperature"'
-  topic_state:                          '"pub/uuu/ccc/nnn/state"'
-  topic_excess_timer_state:             '"pub/uuu/ccc/nnn/excess_timer_state"'
-  topic_min_heating_timer_state:        '"pub/uuu/ccc/nnn/min_heating_timer_state"'
-  topic_defrosting_timer_state:         '"pub/uuu/ccc/nnn/defrosting_timer_state"'
-  topic_start_defrosting_timer_state:   '"pub/uuu/ccc/nnn/start_defrosting_timer_state"'
-  topic_force_defrost_timer_state:      '"pub/uuu/ccc/nnn/force_defrost_timer_state"'
-  topic_reset_timer_state:              '"pub/uuu/ccc/nnn/reset_timer_state"'
-  topic_error:                          '"pub/uuu/ccc/nnn/error"'
+  dallas_address_outdoor_temp:        '0x2dd4e3391e64ff28'
 
 # IO-pins:
   dallas_pin: 'GPIO25' # Pin for DS18B20 1-wire temperature sensors. Set to the pin number you are using.
   relay_pin: 'GPIO4' # Pin for controlling relay
   dallas_power_pin: 'GPIO27'
-
 
 #############################################################################
 #########################Sonoff Th Elite display#############################
