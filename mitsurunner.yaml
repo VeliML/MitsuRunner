@@ -263,8 +263,8 @@ sensor:
                 if (G_state_time_passed) {
               // If outdoor temperature average exceeds the threshold or Mitsurunner is disabled, switch off the defrost hack logic
                     if (id(heat_exchanger_temp).state > HEAT_EXCHANGER_MAX_TEMPERATURE ||
-                            id(outdoor_temp).state > OUTDOOR_TEMPERATURE_TO_ENTER_OFF_STATE ||
-                            id(G_Runner_ON) == false) {
+                        id(outdoor_temp).state > OUTDOOR_TEMPERATURE_TO_ENTER_OFF_STATE ||
+                        id(G_Runner_ON) == false) {
                         id(enter_Off).execute();
                     }
                     // If defrosting is going on
@@ -280,9 +280,9 @@ sensor:
             case ST_IDLE:
                 // If outdoor temperature average exceeds the threshold or Mitsurunner is disabled, switch off the defrost hack logic
                     if (id(heat_exchanger_temp).state > HEAT_EXCHANGER_MAX_TEMPERATURE ||
-                            id(outdoor_temp).state > OUTDOOR_TEMPERATURE_TO_ENTER_OFF_STATE ||
-                            id(G_Runner_ON) == false) {
-                    id(enter_Off).execute();
+                        id(outdoor_temp).state > OUTDOOR_TEMPERATURE_TO_ENTER_OFF_STATE ||
+                        id(G_Runner_ON) == false) {
+                        id(enter_Off).execute();
                 }
                 // If maximum heating time exceeded, start defrosting immediately
                 else if (id(G_max_heating_time_passed) || id(G_manual_defrosting)) {
@@ -297,8 +297,8 @@ sensor:
             case ST_OFF:
                 // Enter normal defrost hack mode if outside temperature is low enough and Mitsurunner is enabled
                 if(id(heat_exchanger_temp).state < HEAT_EXCHANGER_MAX_TEMPERATURE &&
-                        id(outdoor_temp).state < OUTDOOR_TEMPERATURE_TO_EXIT_OFF_STATE &&
-                        id(G_Runner_ON) == true) {
+                    id(outdoor_temp).state < OUTDOOR_TEMPERATURE_TO_EXIT_OFF_STATE &&
+                    id(G_Runner_ON) == true) {
                     id(schedule_forced_defrosting).execute();
                     id(enter_Idle).execute();
                 }
