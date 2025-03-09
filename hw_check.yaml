@@ -27,12 +27,10 @@
 # Shows IDs of connected Dallas sensors
 # Switches relay: 1sec on, 4sec off
 
-
 esphome:
   name: mitsurunner-hw-check
-# HW-platform
-  platform: esp8266
-  board: d1_mini
+esp8266:               # For Wemos
+  board: nodemcuv2     # For Wemos
 
 substitutions:
 
