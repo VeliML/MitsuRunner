@@ -62,7 +62,7 @@ substitutions:
 # Change field names (kenno, ....) if needed.
  
   topic_heatexchanger:                  '"$prefix/kenno"'
-  topic_outdoor:                        '"$prefix/ulkoilma"'
+  topic_outdoor:                        '"$prefix/ulkolampo"'
   topic_delta:                          '"$prefix/delta"'
   topic_rssi:                           '"$prefix/rssi"'
   topic_outdoor_errors:                 '"$prefix/ulkovirhe"'
