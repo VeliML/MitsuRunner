@@ -60,15 +60,15 @@ substitutions:
 
 # MQTT topics. Notice that these are inside both single and double quotes e.g.'"xxx"'
 # Change field names (kenno, ....) if needed.
- 
-  topic_heatexchanger:                  '"$prefix/kenno"'
+
+  topic_heatexchanger:                  '"$prefix/kennolampo"'
   topic_outdoor:                        '"$prefix/ulkolampo"'
-  topic_delta:                          '"$prefix/delta"'
-  topic_rssi:                           '"$prefix/rssi"'
+  topic_delta:                          '"$prefix/delta_t"'
+  topic_rssi:                           '"$prefix/wifi_rssi"'
   topic_outdoor_errors:                 '"$prefix/ulkovirhe"'
   topic_exchanger_errors:               '"$prefix/kennovirhe"'
   topic_state:                          '"$prefix/tila"'
-  topic_uptime:                         '"$prefix/uptime"'
+  topic_uptime:                         '"$prefix/kayntiaika"'
 
 # topics below are needed only for deeper debug
 
