@@ -1,0 +1,116 @@
+
+#########################################################################################################################
+#    This program searches for DS18B20 sensors connected to the 1-Wire bus of Sonoff Elite THR316d                      #
+#    and displays their IDs in a WEB view.                                                                              #
+#    If you use the same WiFi and OTA parameters as in "Mitsurunner",                                                   #
+#    you can switch from one program to another via an OTA update.                                                      #
+#########################################################################################################################
+
+esphome:
+
+  name: mitsurunner
+
+  on_boot:
+    priority: 800
+    then:
+      - switch.turn_on: Dallas_power
+      - delay: 1s
+
+esp32:
+  board: esp32dev
+  framework:
+    type: arduino
+
+logger:
+  level: DEBUG
+
+#######################################################################
+
+wifi:
+  id: wifi_i
+
+  networks:
+  - ssid: "testi"
+    password: "....."
+    priority: 10
+
+  ap:
+    ssid: "mitsurunnerap"
+    ap_timeout: 60s
+
+captive_portal:
+
+ota:
+   - platform: esphome
+     password: "...."          # update in case of OTA-download
+
+web_server:
+  port: 80
+
+#########################################################################
+
+one_wire:
+  - platform: gpio
+    pin: GPIO25
+    id: ow_bus
+
+switch:
+  - platform: gpio
+    pin: GPIO27
+    id: Dallas_power
+    internal: true
+    restore_mode: ALWAYS_ON
+
+text_sensor:
+  - platform: template
+    id: ds_id_1
+    name: "DS18B20 #1 ID"
+
+  - platform: template
+    id: ds_id_2
+    name: "DS18B20 #2 ID"
+
+  - platform: template
+    id: ds_id_3
+    name: "DS18B20 #3 ID"
+
+interval:
+  - interval: 5s
+    then:
+      - lambda: |-
+          const auto &devices = id(ow_bus).get_devices();
+
+          int idx = 0;
+
+          for (auto dev : devices) {
+            if (idx >= 3) break;
+
+            uint8_t a[8];
+
+            for (int i = 0; i < 8; i++) {
+              a[i] = (dev >> (8 * (7 - i))) & 0xFF;
+            }
+
+            char buf[32];
+
+            sprintf(buf,
+                    "%02X%02X%02X%02X%02X%02X%02X%02X",
+                    a[0], a[1], a[2], a[3],
+                    a[4], a[5], a[6], a[7]);
+
+            ESP_LOGD("DS18B20", "Founded sensors %d: %s", idx + 1, buf);
+
+            if (idx == 0)
+              id(ds_id_1).publish_state(buf);
+
+            if (idx == 1)
+              id(ds_id_2).publish_state(buf);
+
+            if (idx == 2)
+              id(ds_id_3).publish_state(buf);
+
+            idx++;
+          }
+
+          ESP_LOGD("DS18B20", "Antureita löytyi: %d", idx);
+
