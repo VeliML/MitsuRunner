@@ -16,7 +16,7 @@ esphome:
       - switch.turn_on: Dallas_power
       - delay: 10s
       - lambda: |-
-          App.safe_reboot();      # new scan after 10s
+          App.safe_reboot();      // new scan after 10s
 
 esp32:
   board: esp32dev
